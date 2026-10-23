@@ -6,10 +6,23 @@ internal static class BmpHeaderWriter
 {
     internal const int HeaderSize = 54;
 
-    internal static long GetFileSize(int width, int height) => HeaderSize + (long)width * height * 4;
+    internal static long GetFileSize(int width, int height) =>
+        checked(HeaderSize + (long)width * height * 4);
 
     internal static void Write(Span<byte> destination, int width, int height)
     {
+        if (width <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(width), width, "The width must be greater than zero.");
+        }
+
+        if (height <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(height), height, "The height must be greater than zero.");
+        }
+
         if (destination.Length < HeaderSize)
         {
             throw new ArgumentException(

@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Bmp;
 
 namespace TurboJpegWrapper.Tests;
 
@@ -14,6 +15,7 @@ public sealed class DecodeToBmpTests
         Assert.Equal((byte)'B', bmp[0]);
         Assert.Equal((byte)'M', bmp[1]);
         Assert.Equal(bmp.Length, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(2)));
+        Assert.Equal(0, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(6)));
         Assert.Equal(54, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(10)));
         Assert.Equal(40, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(14)));
         Assert.Equal(35, BmpTestHelpers.Width(bmp));
@@ -21,6 +23,11 @@ public sealed class DecodeToBmpTests
         Assert.Equal(1, BinaryPrimitives.ReadUInt16LittleEndian(bmp.AsSpan(26)));
         Assert.Equal(32, BinaryPrimitives.ReadUInt16LittleEndian(bmp.AsSpan(28)));
         Assert.Equal(0, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(30)));
+        Assert.Equal(3220, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(34)));
+        Assert.Equal(2835, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(38)));
+        Assert.Equal(2835, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(42)));
+        Assert.Equal(0, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(46)));
+        Assert.Equal(0, BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(50)));
         Assert.Equal(54 + 35 * 23 * 4, bmp.Length);
     }
 
@@ -129,6 +136,33 @@ public sealed class DecodeToBmpTests
     }
 
     [Fact]
+    public void DecodeToBmp_NativeDecodeFailure_ThrowsTurboJpegException()
+    {
+        var jpeg = TestFixtures.Load("baseline-444.jpg");
+        using var decoder = new TurboJpegDecoder(new TurboJpegDecodeOptions(maxPixels: 1));
+
+        var info = decoder.GetImageInfo(jpeg);
+        Assert.Equal(TestFixtures.Width, info.Width);
+        Assert.Equal(TestFixtures.Height, info.Height);
+
+        var exception = Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(jpeg));
+        Assert.Contains("large", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DecodeToBmp_TooLarge_ThrowsTurboJpegImageTooLargeException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = PatchJpegDimensions(TestFixtures.Load("baseline-444.jpg"), 65500, 65500);
+
+        var info = decoder.GetImageInfo(jpeg);
+        Assert.Equal(65500, info.Width);
+        Assert.Equal(65500, info.Height);
+
+        Assert.Throws<TurboJpegImageTooLargeException>(() => decoder.DecodeToBmp(jpeg));
+    }
+
+    [Fact]
     public void DecodeToBmp_Garbage_ThrowsTurboJpegException()
     {
         using var decoder = new TurboJpegDecoder();
@@ -152,6 +186,67 @@ public sealed class DecodeToBmpTests
 
         Assert.Throws<ObjectDisposedException>(
             () => decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg")));
+    }
+
+    [Fact]
+    public void BmpHeaderWriter_Write_ShortDestination_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => BmpHeaderWriter.Write(new byte[53], 35, 23));
+    }
+
+    [Theory]
+    [InlineData(0, 23)]
+    [InlineData(-1, 23)]
+    [InlineData(35, 0)]
+    [InlineData(35, -1)]
+    public void BmpHeaderWriter_Write_NonPositiveDimensions_ThrowsArgumentOutOfRangeException(
+        int width, int height)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => BmpHeaderWriter.Write(new byte[BmpTestHelpers.HeaderSize], width, height));
+    }
+
+    private static byte[] PatchJpegDimensions(byte[] jpeg, int width, int height)
+    {
+        var patched = (byte[])jpeg.Clone();
+        var offset = 2;
+
+        while (offset + 4 <= patched.Length)
+        {
+            if (patched[offset] != 0xFF)
+            {
+                break;
+            }
+
+            var marker = patched[offset + 1];
+            if (marker is 0xC0 or 0xC1 or 0xC2)
+            {
+                if (offset + 9 > patched.Length)
+                {
+                    break;
+                }
+
+                BinaryPrimitives.WriteUInt16BigEndian(patched.AsSpan(offset + 5, 2), checked((ushort)height));
+                BinaryPrimitives.WriteUInt16BigEndian(patched.AsSpan(offset + 7, 2), checked((ushort)width));
+                return patched;
+            }
+
+            if (marker is 0xD8 or 0xD9 or 0xDA or 0x01 ||
+                (marker is >= 0xD0 and <= 0xD7))
+            {
+                break;
+            }
+
+            var segmentLength = BinaryPrimitives.ReadUInt16BigEndian(patched.AsSpan(offset + 2, 2));
+            if (segmentLength < 2)
+            {
+                break;
+            }
+
+            offset += 2 + segmentLength;
+        }
+
+        throw new InvalidOperationException("The JPEG does not contain a supported SOF marker.");
     }
 
     private static void AssertValidBmp(byte[] bmp)
