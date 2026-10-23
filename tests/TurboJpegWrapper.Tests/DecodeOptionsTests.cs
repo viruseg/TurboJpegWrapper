@@ -93,6 +93,24 @@ public sealed class DecodeOptionsTests
     }
 
     [Fact]
+    public void DecodeToBmp_MaxMemoryExceeded_ThrowsTurboJpegException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("progressive.jpg");
+        JpegPatcher.SetDimensions(jpeg, 1024, 1024);
+
+        var exception = Assert.Throws<TurboJpegException>(
+            () => decoder.DecodeToBmp(
+                jpeg,
+                new TurboJpegDecodeOptions(maxMemoryMegabytes: 1)));
+
+        Assert.Contains("memory limit", exception.Message, StringComparison.OrdinalIgnoreCase);
+
+        var recovered = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"));
+        Assert.Equal(35, BmpTestHelpers.Width(recovered));
+    }
+
+    [Fact]
     public void DecodeToBmp_AfterNativeFailure_CanDecodeAgain()
     {
         using var decoder = new TurboJpegDecoder();
