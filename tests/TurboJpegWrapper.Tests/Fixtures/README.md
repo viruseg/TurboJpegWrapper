@@ -1,6 +1,6 @@
 # Test fixtures
 
-All fixtures are generated from a single 35×23 PPM image by `tools/generate-fixtures.ps1`.
+All fixtures were generated from a single 35×23 PPM image with the libjpeg-turbo `cjpeg.exe` (3.2.0).
 The PPM contains horizontal bands of 4 rows: red, green, blue, white, black, and then 3 rows of gray.
 
 The fixtures were produced with the libjpeg-turbo `cjpeg.exe` (3.2.0) using these exact commands:
