@@ -34,4 +34,31 @@ public sealed class ScalingFactorTests
 
         Assert.Same(first, second);
     }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-1, 1)]
+    [InlineData(1, 0)]
+    [InlineData(1, -1)]
+    public void Constructor_NonPositiveValues_ThrowsArgumentOutOfRangeException(
+        int numerator, int denominator)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TurboJpegScalingFactor(numerator, denominator));
+    }
+
+    [Fact]
+    public void Value_ReturnsRatio()
+    {
+        Assert.Equal(0.5, new TurboJpegScalingFactor(1, 2).Value);
+    }
+
+    [Fact]
+    public void Deconstruct_ReturnsComponents()
+    {
+        var (numerator, denominator) = new TurboJpegScalingFactor(3, 4);
+
+        Assert.Equal(3, numerator);
+        Assert.Equal(4, denominator);
+    }
 }

@@ -186,15 +186,10 @@ public sealed class DecodeOptionsTests
             scanLimit: scanLimit));
     }
 
-    [Theory]
-    [InlineData(0, 1)]
-    [InlineData(-1, 1)]
-    [InlineData(1, 0)]
-    [InlineData(1, -1)]
-    public void Constructor_NonPositiveScalingFactor_ThrowsArgumentOutOfRangeException(
-        int numerator, int denominator)
+    [Fact]
+    public void Constructor_DefaultScalingFactor_ThrowsArgumentOutOfRangeException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(numerator, denominator)));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TurboJpegDecodeOptions(scalingFactor: default(TurboJpegScalingFactor)));
     }
 }

@@ -7,8 +7,10 @@ namespace TurboJpegWrapper;
 public static class TurboJpeg
 {
     /// <summary>Gets the scaling factors supported by TurboJPEG, including 1:1 and downscaling factors only.</summary>
+    /// <remarks>The factors are read from the native library once and cached after the first successful query.</remarks>
     /// <returns>A read-only span over the supported scaling factors in native order.</returns>
-    /// <exception cref="TurboJpegException">The TurboJPEG native library could not be loaded.</exception>
+    /// <exception cref="TurboJpegException">The native library could not be loaded or the native scaling-factor query failed.</exception>
+    /// <exception cref="PlatformNotSupportedException">The current OS/architecture is not supported and no explicit native path is configured.</exception>
     public static ReadOnlySpan<TurboJpegScalingFactor> GetSupportedScalingFactors()
     {
         try
