@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using TurboJpegWrapper;
 using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Tests;
@@ -55,5 +56,121 @@ public sealed class NativeLoaderTests
         var expected = Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "native", file);
 
         Assert.Contains(expected, TurboJpegNativeLoader.GetCandidatePaths());
+    }
+
+    [Fact]
+    public void Resolve_OverridePath_LoadsLibrary()
+    {
+        var libraryPath = TurboJpegNativeLoader.GetCandidatePaths().First(File.Exists);
+        var handle = TurboJpegNativeLoader.Resolve(
+            TurboJpegNative.LibraryName,
+            typeof(TurboJpegNative).Assembly,
+            null,
+            libraryPath);
+
+        try
+        {
+            Assert.NotEqual(nint.Zero, handle);
+        }
+        finally
+        {
+            if (handle != nint.Zero)
+            {
+                NativeLibrary.Free(handle);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void Resolve_EmptyOrWhitespaceOverride_UsesFallback(string overridePath)
+    {
+        var handle = TurboJpegNativeLoader.Resolve(
+            TurboJpegNative.LibraryName,
+            typeof(TurboJpegNative).Assembly,
+            null,
+            overridePath);
+
+        try
+        {
+            Assert.NotEqual(nint.Zero, handle);
+        }
+        finally
+        {
+            if (handle != nint.Zero)
+            {
+                NativeLibrary.Free(handle);
+            }
+        }
+    }
+
+    [Fact]
+    public void Resolve_MissingOverride_ThrowsWithPathAndReason()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), "turbojpeg-missing", "turbojpeg.dll");
+
+        var exception = Assert.Throws<TurboJpegException>(() =>
+            TurboJpegNativeLoader.Resolve(
+                TurboJpegNative.LibraryName,
+                typeof(TurboJpegNative).Assembly,
+                null,
+                missingPath));
+
+        Assert.Contains(missingPath, exception.Message);
+        Assert.Contains(TurboJpegNativeLoader.OverrideEnvironmentVariable, exception.Message);
+        Assert.Contains("not used", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Resolve_UnknownLibraryName_ReturnsZero()
+    {
+        var handle = TurboJpegNativeLoader.Resolve(
+            "other-library",
+            typeof(TurboJpegNative).Assembly,
+            null,
+            "ignored");
+
+        Assert.Equal(nint.Zero, handle);
+    }
+
+    [Fact]
+    public void CreateLoadException_NoOverride_MentionsOsSearchAndReason()
+    {
+        var inner = new DllNotFoundException("probe failure");
+
+        var exception = TurboJpegNative.CreateLoadException(inner, overridePath: null);
+
+        Assert.Contains("operating system search path", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("probe failure", exception.Message);
+        Assert.Contains("3.2.0", exception.Message);
+        Assert.Same(inner, exception.InnerException);
+    }
+
+    [Fact]
+    public void CreateLoadException_WithOverride_MentionsOverrideOnly()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "turbojpeg.dll");
+        var inner = new BadImageFormatException("wrong architecture");
+
+        var exception = TurboJpegNative.CreateLoadException(inner, path);
+
+        Assert.Contains(path, exception.Message);
+        Assert.Contains(TurboJpegNativeLoader.OverrideEnvironmentVariable, exception.Message);
+        Assert.Contains("not used", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("wrong architecture", exception.Message);
+    }
+
+    [Fact]
+    public void CreateLoadException_EntryPoint_MentionsRequiredVersion()
+    {
+        var inner = new EntryPointNotFoundException("tj3InitVersion");
+
+        var exception = TurboJpegNative.CreateLoadException(inner, overridePath: null);
+
+        Assert.Contains("entry point", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("3.2.0", exception.Message);
+        Assert.Contains("tj3InitVersion", exception.Message);
     }
 }

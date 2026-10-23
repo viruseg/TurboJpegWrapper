@@ -161,14 +161,41 @@ internal static unsafe partial class TurboJpegNative
 
     internal static TurboJpegException CreateLoadException(Exception innerException)
     {
-        var overridePath = Environment.GetEnvironmentVariable(TurboJpegNativeLoader.OverrideEnvironmentVariable);
-        var location = string.IsNullOrWhiteSpace(overridePath)
-            ? $"Expected the library at one of: {string.Join(", ", TurboJpegNativeLoader.GetCandidatePaths())}"
-            : $"Configured via {TurboJpegNativeLoader.OverrideEnvironmentVariable}: {overridePath}";
+        return CreateLoadException(
+            innerException,
+            Environment.GetEnvironmentVariable(TurboJpegNativeLoader.OverrideEnvironmentVariable));
+    }
+
+    internal static TurboJpegException CreateLoadException(Exception innerException, string? overridePath)
+    {
+        var version = $"libjpeg-turbo 3.2.0, TurboJPEG API version {ApiVersion}";
+
+        if (innerException is EntryPointNotFoundException)
+        {
+            var foundAt = string.IsNullOrWhiteSpace(overridePath)
+                ? "in one of the candidate locations or on the operating system search path"
+                : $"at the configured override path '{overridePath}'";
+
+            return new TurboJpegException(
+                $"The TurboJPEG native library was found {foundAt}, but a required entry point is missing. " +
+                $"This library requires {version}; install TurboJPEG 3.2.0 or newer. " +
+                $"Reason: {innerException.Message}",
+                innerException);
+        }
+
+        if (!string.IsNullOrWhiteSpace(overridePath))
+        {
+            return new TurboJpegException(
+                $"Failed to load the TurboJPEG native library from '{overridePath}' specified by " +
+                $"{TurboJpegNativeLoader.OverrideEnvironmentVariable} ({version}). " +
+                $"The operating system search path was not used. Reason: {innerException.Message}",
+                innerException);
+        }
 
         return new TurboJpegException(
-            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, TurboJPEG API version {ApiVersion}). " +
-            $"{location}. Reason: {innerException.Message}",
+            $"Failed to load the TurboJPEG native library ({version}). " +
+            $"Expected the library at one of: {string.Join(", ", TurboJpegNativeLoader.GetCandidatePaths())}, " +
+            $"or on the operating system search path. Reason: {innerException.Message}",
             innerException);
     }
 }

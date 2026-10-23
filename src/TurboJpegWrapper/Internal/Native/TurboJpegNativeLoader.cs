@@ -21,12 +21,24 @@ internal static class TurboJpegNativeLoader
 
     internal static nint Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
+        return Resolve(
+            libraryName,
+            assembly,
+            searchPath,
+            Environment.GetEnvironmentVariable(OverrideEnvironmentVariable));
+    }
+
+    internal static nint Resolve(
+        string libraryName,
+        Assembly assembly,
+        DllImportSearchPath? searchPath,
+        string? overridePath)
+    {
         if (!string.Equals(libraryName, TurboJpegNative.LibraryName, StringComparison.Ordinal))
         {
             return nint.Zero;
         }
 
-        var overridePath = Environment.GetEnvironmentVariable(OverrideEnvironmentVariable);
         if (!string.IsNullOrWhiteSpace(overridePath))
         {
             try
@@ -35,10 +47,7 @@ internal static class TurboJpegNativeLoader
             }
             catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
             {
-                throw new TurboJpegException(
-                    $"Failed to load the TurboJPEG native library from '{overridePath}' " +
-                    $"specified by {OverrideEnvironmentVariable}: {ex.Message}",
-                    ex);
+                throw TurboJpegNative.CreateLoadException(ex, overridePath);
             }
         }
 
@@ -50,20 +59,44 @@ internal static class TurboJpegNativeLoader
                 $"{RuntimeInformation.ProcessArchitecture}. Set {OverrideEnvironmentVariable} to an explicit library path.");
         }
 
+        var attempts = new List<string>();
+        Exception? lastFailure = null;
+
         foreach (var candidate in GetCandidatePaths())
         {
-            if (File.Exists(candidate) && NativeLibrary.TryLoad(candidate, out var candidateHandle))
+            if (!File.Exists(candidate))
             {
-                return candidateHandle;
+                attempts.Add($"{candidate} (not found)");
+                continue;
+            }
+
+            try
+            {
+                return NativeLibrary.Load(candidate);
+            }
+            catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
+            {
+                attempts.Add($"{candidate} ({ex.Message})");
+                lastFailure = ex;
             }
         }
 
-        if (NativeLibrary.TryLoad(TurboJpegNative.LibraryName, assembly, searchPath, out var systemHandle))
+        try
         {
-            return systemHandle;
+            return NativeLibrary.Load(TurboJpegNative.LibraryName, assembly, searchPath);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
+        {
+            attempts.Add($"operating system search path for '{TurboJpegNative.LibraryName}' ({ex.Message})");
+            lastFailure = ex;
         }
 
-        return nint.Zero;
+        throw new TurboJpegException(
+            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, " +
+            $"TurboJPEG API version {TurboJpegNative.ApiVersion}). " +
+            $"Attempts: {string.Join("; ", attempts)}. " +
+            $"Set {OverrideEnvironmentVariable} to an explicit library path.",
+            lastFailure!);
     }
 
     internal static string? GetRuntimeIdentifier(OSPlatform os, Architecture architecture)
