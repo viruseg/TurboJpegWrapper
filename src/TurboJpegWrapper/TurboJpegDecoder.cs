@@ -1,3 +1,4 @@
+using TurboJpegWrapper.Internal.Bmp;
 using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper;
@@ -38,6 +39,73 @@ public sealed class TurboJpegDecoder : IDisposable
         }
 
         return ReadHeader(jpeg);
+    }
+
+    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <returns>The complete BMP file contents.</returns>
+    /// <exception cref="ArgumentException"><paramref name="jpeg"/> is empty.</exception>
+    /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
+    public unsafe byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg)
+    {
+        ThrowIfDisposed();
+
+        if (jpeg.IsEmpty)
+        {
+            throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
+        }
+
+        var info = ReadHeader(jpeg);
+        if (!info.CanDecodeToBmp)
+        {
+            throw new TurboJpegUnsupportedException(
+                $"Cannot decode a JPEG with {info.Precision}-bit precision and {info.Colorspace} colorspace to BMP.");
+        }
+
+        var width = info.Width;
+        var height = info.Height;
+        var total = BmpHeaderWriter.GetFileSize(width, height);
+        if (total > Array.MaxLength)
+        {
+            throw new TurboJpegImageTooLargeException(
+                $"The decoded image ({width}x{height}) requires {total} bytes, " +
+                $"which exceeds the maximum array length of {Array.MaxLength} bytes.");
+        }
+
+        var handle = _handle!;
+        SetParameter(handle, TurboJpegNative.ParamBottomUp, 1);
+        SetParameter(handle, TurboJpegNative.ParamMaxPixels, _defaultOptions.MaxPixels);
+        SetParameter(handle, TurboJpegNative.ParamScanLimit, _defaultOptions.ScanLimit);
+        SetParameter(handle, TurboJpegNative.ParamFastDct, _defaultOptions.FastDct ? 1 : 0);
+        SetParameter(handle, TurboJpegNative.ParamFastUpsample, _defaultOptions.FastUpsampling ? 1 : 0);
+
+        var bmp = GC.AllocateUninitializedArray<byte>((int)total);
+        BmpHeaderWriter.Write(bmp.AsSpan(0, BmpHeaderWriter.HeaderSize), width, height);
+
+        var pitch = checked(width * 4);
+        fixed (byte* jpegBuf = jpeg)
+        fixed (byte* dstBuf = bmp.AsSpan(BmpHeaderWriter.HeaderSize))
+        {
+            if (TurboJpegNative.Decompress8(
+                    handle,
+                    jpegBuf,
+                    (nuint)jpeg.Length,
+                    dstBuf,
+                    pitch,
+                    TurboJpegNative.PixelFormatBgra) != 0)
+            {
+                throw TurboJpegNative.CreateException(handle);
+            }
+        }
+
+        return bmp;
     }
 
     /// <summary>Releases the native TurboJPEG handle.</summary>
@@ -89,6 +157,14 @@ public sealed class TurboJpegDecoder : IDisposable
         if (_handle is null)
         {
             throw new ObjectDisposedException(nameof(TurboJpegDecoder));
+        }
+    }
+
+    private static void SetParameter(SafeTurboJpegHandle handle, int parameter, int value)
+    {
+        if (TurboJpegNative.Set(handle, parameter, value) != 0)
+        {
+            throw TurboJpegNative.CreateException(handle);
         }
     }
 }

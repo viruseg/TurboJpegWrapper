@@ -51,6 +51,15 @@ internal static unsafe partial class TurboJpegNative
     [LibraryImport(LibraryName, EntryPoint = "tj3DecompressHeader")]
     internal static partial int DecompressHeader(SafeTurboJpegHandle handle, byte* jpegBuf, nuint jpegSize);
 
+    [LibraryImport(LibraryName, EntryPoint = "tj3Decompress8")]
+    internal static partial int Decompress8(
+        SafeTurboJpegHandle handle,
+        byte* jpegBuf,
+        nuint jpegSize,
+        byte* dstBuf,
+        int pitch,
+        int pixelFormat);
+
     [LibraryImport(LibraryName, EntryPoint = "tj3Get")]
     internal static partial int Get(SafeTurboJpegHandle handle, int param);
 
