@@ -1,0 +1,119 @@
+using System.Runtime.InteropServices;
+
+namespace TurboJpegWrapper.Internal.Native;
+
+internal static unsafe partial class TurboJpegNative
+{
+    internal const string LibraryName = "turbojpeg";
+
+    internal const int InitDecompress = 1;
+    internal const int ApiVersion = 3_002_000;
+    internal const int PixelFormatBgra = 8;
+
+    internal const int ParamBottomUp = 1;
+    internal const int ParamSubsamp = 4;
+    internal const int ParamJpegWidth = 5;
+    internal const int ParamJpegHeight = 6;
+    internal const int ParamPrecision = 7;
+    internal const int ParamColorspace = 8;
+    internal const int ParamFastUpsample = 9;
+    internal const int ParamFastDct = 10;
+    internal const int ParamScanLimit = 13;
+    internal const int ParamLossless = 15;
+    internal const int ParamMaxMemory = 23;
+    internal const int ParamMaxPixels = 24;
+    internal const int ParamSaveMarkers = 25;
+
+    internal const int ErrorWarning = 0;
+    internal const int ErrorFatal = 1;
+
+    static TurboJpegNative()
+    {
+        TurboJpegNativeLoader.EnsureRegistered();
+    }
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3InitVersion")]
+    internal static partial nint InitVersion(int initType, int apiVersion);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3Destroy")]
+    internal static partial void Destroy(nint handle);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3DecompressHeader")]
+    internal static partial int DecompressHeader(SafeTurboJpegHandle handle, byte* jpegBuf, nuint jpegSize);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3Get")]
+    internal static partial int Get(SafeTurboJpegHandle handle, int param);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3Set")]
+    internal static partial int Set(SafeTurboJpegHandle handle, int param, int value);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorStr")]
+    internal static partial nint GetErrorStr(SafeTurboJpegHandle handle);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorStr")]
+    internal static partial nint GetErrorStr(nint handle);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorCode")]
+    internal static partial int GetErrorCode(SafeTurboJpegHandle handle);
+
+    internal static SafeTurboJpegHandle CreateDecoderHandle()
+    {
+        nint handle;
+        try
+        {
+            handle = InitVersion(InitDecompress, ApiVersion);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
+        {
+            throw CreateLoadException(ex);
+        }
+
+        if (handle == nint.Zero)
+        {
+            throw CreateException(null);
+        }
+
+        var safeHandle = new SafeTurboJpegHandle(handle);
+        if (Set(safeHandle, ParamSaveMarkers, 0) != 0)
+        {
+            var exception = CreateException(safeHandle);
+            safeHandle.Dispose();
+            throw exception;
+        }
+
+        return safeHandle;
+    }
+
+    internal static TurboJpegException CreateException(SafeTurboJpegHandle? handle)
+    {
+        if (handle is null)
+        {
+            var globalMessage = Marshal.PtrToStringUTF8(GetErrorStr(nint.Zero));
+            return new TurboJpegException(
+                string.IsNullOrWhiteSpace(globalMessage)
+                    ? "TurboJPEG failed to initialize a decompression handle."
+                    : globalMessage,
+                isFatal: true);
+        }
+
+        var errorCode = GetErrorCode(handle);
+        var message = Marshal.PtrToStringUTF8(GetErrorStr(handle));
+
+        return new TurboJpegException(
+            string.IsNullOrWhiteSpace(message) ? "TurboJPEG reported an unknown error." : message,
+            isFatal: errorCode == ErrorFatal);
+    }
+
+    private static TurboJpegException CreateLoadException(Exception innerException)
+    {
+        var overridePath = Environment.GetEnvironmentVariable(TurboJpegNativeLoader.OverrideEnvironmentVariable);
+        var location = string.IsNullOrWhiteSpace(overridePath)
+            ? $"Expected the library at one of: {string.Join(", ", TurboJpegNativeLoader.GetCandidatePaths())}"
+            : $"Configured via {TurboJpegNativeLoader.OverrideEnvironmentVariable}: {overridePath}";
+
+        return new TurboJpegException(
+            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, TurboJPEG API version {ApiVersion}). " +
+            $"{location}. Reason: {innerException.Message}",
+            innerException);
+    }
+}

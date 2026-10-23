@@ -1,0 +1,82 @@
+using TurboJpegWrapper;
+
+namespace TurboJpegWrapper.Tests;
+
+public sealed class GetImageInfoTests
+{
+    [Fact]
+    public void GetImageInfo_ReturnsDimensionsAndFormat()
+    {
+        using var decoder = new TurboJpegDecoder();
+
+        var info = decoder.GetImageInfo(TestFixtures.Load("baseline-420.jpg"));
+
+        Assert.Equal(35, info.Width);
+        Assert.Equal(23, info.Height);
+        Assert.Equal(8, info.Precision);
+        Assert.Equal(TurboJpegColorspace.YCbCr, info.Colorspace);
+        Assert.Equal(TurboJpegSubsampling.Yuv420, info.Subsampling);
+        Assert.False(info.IsLossless);
+        Assert.True(info.CanDecodeToBmp);
+    }
+
+    [Fact]
+    public void GetImageInfo_Grayscale_ReportsGray()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var info = decoder.GetImageInfo(TestFixtures.Load("grayscale.jpg"));
+
+        Assert.Equal(TurboJpegColorspace.Grayscale, info.Colorspace);
+        Assert.Equal(TurboJpegSubsampling.Grayscale, info.Subsampling);
+    }
+
+    [Fact]
+    public void GetImageInfo_Precision12_IsReportedButNotDecodable()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var info = decoder.GetImageInfo(TestFixtures.Load("precision12.jpg"));
+
+        Assert.Equal(12, info.Precision);
+        Assert.False(info.CanDecodeToBmp);
+    }
+
+    [Fact]
+    public void GetImageInfo_Garbage_ThrowsTurboJpegException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        Assert.Throws<TurboJpegException>(() => decoder.GetImageInfo(new byte[] { 1, 2, 3, 4 }));
+    }
+
+    [Fact]
+    public void GetImageInfo_Empty_ThrowsArgumentException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        Assert.Throws<ArgumentException>(() => decoder.GetImageInfo(ReadOnlySpan<byte>.Empty));
+    }
+
+    [Fact]
+    public void Decoder_AfterDispose_ThrowsObjectDisposedException()
+    {
+        var decoder = new TurboJpegDecoder();
+        decoder.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(
+            () => decoder.GetImageInfo(TestFixtures.Load("baseline-444.jpg")));
+    }
+
+    [Theory]
+    [InlineData(TurboJpegColorspace.YCbCr, 8, true)]
+    [InlineData(TurboJpegColorspace.Grayscale, 8, true)]
+    [InlineData(TurboJpegColorspace.Rgb, 8, true)]
+    [InlineData(TurboJpegColorspace.Cmyk, 8, false)]
+    [InlineData(TurboJpegColorspace.Ycck, 8, false)]
+    [InlineData(TurboJpegColorspace.YCbCr, 12, false)]
+    public void CanDecodeToBmp_ReflectsSupportedFormats(
+        TurboJpegColorspace colorspace, int precision, bool expected)
+    {
+        var info = new TurboJpegImageInfo(
+            35, 23, precision, colorspace, TurboJpegSubsampling.Yuv420, false);
+
+        Assert.Equal(expected, info.CanDecodeToBmp);
+    }
+}
