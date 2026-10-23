@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using TurboJpegWrapper.Internal;
 
 namespace TurboJpegWrapper.Internal.Native;
 
@@ -11,7 +12,7 @@ internal struct TjScalingFactor
 
 internal static unsafe partial class TurboJpegNative
 {
-    private static readonly Lazy<TurboJpegScalingFactor[]> s_filteredScalingFactors =
+    private static readonly RetryableCache<TurboJpegScalingFactor[]> s_filteredScalingFactors =
         new(LoadFilteredScalingFactors);
 
     internal const string LibraryName = "turbojpeg";
@@ -82,7 +83,7 @@ internal static unsafe partial class TurboJpegNative
     internal static partial int SetScalingFactor(SafeTurboJpegHandle handle, TjScalingFactor factor);
 
     internal static TurboJpegScalingFactor[] GetFilteredScalingFactors() =>
-        s_filteredScalingFactors.Value;
+        s_filteredScalingFactors.GetOrCreate();
 
     private static TurboJpegScalingFactor[] LoadFilteredScalingFactors()
     {

@@ -1,4 +1,5 @@
 using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Tests;
 
@@ -23,5 +24,14 @@ public sealed class ScalingFactorTests
         var second = TurboJpeg.GetSupportedScalingFactors().ToArray();
 
         Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void GetFilteredScalingFactors_ReturnsCachedInstance()
+    {
+        var first = TurboJpegNative.GetFilteredScalingFactors();
+        var second = TurboJpegNative.GetFilteredScalingFactors();
+
+        Assert.Same(first, second);
     }
 }

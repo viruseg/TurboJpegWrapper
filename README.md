@@ -120,7 +120,7 @@ The resolver knows these runtime identifiers: `win-x64`, `win-x86`, `win-arm64`,
 - `TurboJpeg` is safe for concurrent use; each operation rents an exclusive decoder and returns it afterward.
 - `TurboJpegDecoder` owns one native handle and is not thread-safe. Use one instance per thread or synchronize access.
 - Decoding writes directly into the final BMP buffer. There is no intermediate full-image copy.
-- Supported scaling factors are cached after the first query.
+- Supported scaling factors are cached after the first successful query.
 
 ## Packaging
 
