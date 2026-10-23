@@ -22,6 +22,24 @@ public sealed class DecodeOptionsTests
     }
 
     [Fact]
+    public void DecodeToBmp_HalfScale_WritesExactSizeAndContent()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var options = new TurboJpegDecodeOptions(
+            scalingFactor: new TurboJpegScalingFactor(1, 2));
+
+        var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options);
+
+        Assert.Equal(BmpTestHelpers.HeaderSize + 18 * 12 * 4, bmp.Length);
+
+        var (b, g, r, a) = BmpTestHelpers.Pixel(bmp, 5, 1);
+        Assert.Equal(255, a);
+        Assert.InRange((int)r, 231, 255);
+        Assert.InRange((int)g, 0, 24);
+        Assert.InRange((int)b, 0, 24);
+    }
+
+    [Fact]
     public void DecodeToBmp_UpscaleFactor_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();
@@ -75,6 +93,21 @@ public sealed class DecodeOptionsTests
     }
 
     [Fact]
+    public void DecodeToBmp_AfterNativeFailure_CanDecodeAgain()
+    {
+        using var decoder = new TurboJpegDecoder();
+
+        Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(
+            TestFixtures.Load("progressive.jpg"),
+            new TurboJpegDecodeOptions(scanLimit: 1)));
+
+        var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"));
+
+        Assert.Equal(35, BmpTestHelpers.Width(bmp));
+        Assert.Equal(23, BmpTestHelpers.Height(bmp));
+    }
+
+    [Fact]
     public void DecodeToBmp_FastFlags_StillProduceValidBmp()
     {
         using var decoder = new TurboJpegDecoder();
@@ -114,7 +147,9 @@ public sealed class DecodeOptionsTests
         JpegPatcher.SetDimensions(jpeg, 65500, 65500);
         var options = new TurboJpegDecodeOptions(maxPixels: 0);
 
-        Assert.Throws<TurboJpegImageTooLargeException>(() => decoder.DecodeToBmp(jpeg, options));
+        var exception = Assert.Throws<TurboJpegImageTooLargeException>(
+            () => decoder.DecodeToBmp(jpeg, options));
+        Assert.Contains("maximum array length", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

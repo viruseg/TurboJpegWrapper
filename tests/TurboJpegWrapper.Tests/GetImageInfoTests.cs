@@ -48,6 +48,21 @@ public sealed class GetImageInfoTests
     }
 
     [Fact]
+    public void GetImageInfo_AfterHeaderFailure_CanReadAgain()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("baseline-444.jpg");
+
+        Assert.Throws<TurboJpegException>(
+            () => decoder.GetImageInfo(jpeg.AsSpan(0, jpeg.Length / 2)));
+
+        var info = decoder.GetImageInfo(jpeg);
+
+        Assert.Equal(TestFixtures.Width, info.Width);
+        Assert.Equal(TestFixtures.Height, info.Height);
+    }
+
+    [Fact]
     public void GetImageInfo_Empty_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();

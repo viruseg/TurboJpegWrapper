@@ -136,6 +136,45 @@ public sealed class DecodeToBmpTests
     }
 
     [Fact]
+    public void DecodeToBmp_HeaderFailureOnFreshDecoder_CanDecodeAgain()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("baseline-444.jpg");
+
+        Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(jpeg.AsSpan(0, jpeg.Length / 2)));
+
+        var bmp = decoder.DecodeToBmp(jpeg);
+
+        Assert.Equal(TestFixtures.Width, BmpTestHelpers.Width(bmp));
+        Assert.Equal(TestFixtures.Height, BmpTestHelpers.Height(bmp));
+    }
+
+    [Fact]
+    public void DecodeToBmp_AfterHeaderFailure_CanDecodeAgain()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("baseline-444.jpg");
+
+        var scaled = decoder.DecodeToBmp(
+            jpeg,
+            new TurboJpegDecodeOptions(scalingFactor: new TurboJpegScalingFactor(1, 2)));
+        Assert.Equal(18, BmpTestHelpers.Width(scaled));
+
+        Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(jpeg.AsSpan(0, jpeg.Length / 2)));
+
+        var bmp = decoder.DecodeToBmp(jpeg);
+
+        Assert.Equal(TestFixtures.Width, BmpTestHelpers.Width(bmp));
+        Assert.Equal(TestFixtures.Height, BmpTestHelpers.Height(bmp));
+
+        var (b, g, r, a) = BmpTestHelpers.Pixel(bmp, 10, 22);
+        Assert.Equal(255, a);
+        Assert.InRange((int)r, 120, 136);
+        Assert.InRange((int)g, 120, 136);
+        Assert.InRange((int)b, 120, 136);
+    }
+
+    [Fact]
     public void DecodeToBmp_NativeDecodeFailure_ThrowsTurboJpegException()
     {
         var jpeg = TestFixtures.Load("baseline-444.jpg");

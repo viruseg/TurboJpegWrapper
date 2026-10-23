@@ -7,6 +7,7 @@ namespace TurboJpegWrapper;
 /// <remarks>
 /// A decoder owns a single native handle. Instance methods are not thread-safe; use one decoder
 /// per thread or synchronize access. After <see cref="Dispose"/> the instance cannot be reused.
+/// A failed JPEG header parse recreates the native handle so the decoder remains usable.
 /// </remarks>
 public sealed class TurboJpegDecoder : IDisposable
 {
@@ -171,33 +172,55 @@ public sealed class TurboJpegDecoder : IDisposable
             throw new ObjectDisposedException(nameof(TurboJpegDecoder));
         }
 
-        fixed (byte* jpegBuf = jpeg)
+        try
         {
-            if (TurboJpegNative.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0)
+            fixed (byte* jpegBuf = jpeg)
             {
-                throw TurboJpegNative.CreateException(handle);
+                if (TurboJpegNative.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0)
+                {
+                    throw TurboJpegNative.CreateException(handle);
+                }
             }
+
+            var width = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegWidth);
+            var height = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegHeight);
+            var precision = TurboJpegNative.Get(handle, TurboJpegNative.ParamPrecision);
+            var colorspace = TurboJpegNative.Get(handle, TurboJpegNative.ParamColorspace);
+            var subsampling = TurboJpegNative.Get(handle, TurboJpegNative.ParamSubsamp);
+            var lossless = TurboJpegNative.Get(handle, TurboJpegNative.ParamLossless);
+
+            if (width <= 0 || height <= 0)
+            {
+                throw new TurboJpegException($"TurboJPEG reported invalid image dimensions {width}x{height}.");
+            }
+
+            return new TurboJpegImageInfo(
+                width,
+                height,
+                precision,
+                (TurboJpegColorspace)colorspace,
+                (TurboJpegSubsampling)subsampling,
+                lossless != 0);
         }
-
-        var width = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegWidth);
-        var height = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegHeight);
-        var precision = TurboJpegNative.Get(handle, TurboJpegNative.ParamPrecision);
-        var colorspace = TurboJpegNative.Get(handle, TurboJpegNative.ParamColorspace);
-        var subsampling = TurboJpegNative.Get(handle, TurboJpegNative.ParamSubsamp);
-        var lossless = TurboJpegNative.Get(handle, TurboJpegNative.ParamLossless);
-
-        if (width <= 0 || height <= 0)
+        catch (TurboJpegException)
         {
-            throw new TurboJpegException($"TurboJPEG reported invalid image dimensions {width}x{height}.");
+            RecreateHandleAfterFailure();
+            throw;
         }
+    }
 
-        return new TurboJpegImageInfo(
-            width,
-            height,
-            precision,
-            (TurboJpegColorspace)colorspace,
-            (TurboJpegSubsampling)subsampling,
-            lossless != 0);
+    private void RecreateHandleAfterFailure()
+    {
+        _handle?.Dispose();
+        _handle = null;
+        _appliedBottomUp = UnsetParameter;
+        _appliedMaxPixels = UnsetParameter;
+        _appliedMaxMemory = UnsetParameter;
+        _appliedScanLimit = UnsetParameter;
+        _appliedFastDct = UnsetParameter;
+        _appliedFastUpsample = UnsetParameter;
+        _appliedScalingFactor = null;
+        _handle = TurboJpegNative.CreateDecoderHandle();
     }
 
     private void ThrowIfDisposed()
