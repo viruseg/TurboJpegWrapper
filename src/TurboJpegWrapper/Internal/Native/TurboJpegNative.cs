@@ -2,8 +2,18 @@ using System.Runtime.InteropServices;
 
 namespace TurboJpegWrapper.Internal.Native;
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct TjScalingFactor
+{
+    internal int Numerator;
+    internal int Denominator;
+}
+
 internal static unsafe partial class TurboJpegNative
 {
+    private static readonly Lazy<TurboJpegScalingFactor[]> s_filteredScalingFactors =
+        new(LoadFilteredScalingFactors);
+
     internal const string LibraryName = "turbojpeg";
 
     internal const int InitDecompress = 1;
@@ -56,6 +66,42 @@ internal static unsafe partial class TurboJpegNative
     [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorCode")]
     internal static partial int GetErrorCode(SafeTurboJpegHandle handle);
 
+    [LibraryImport(LibraryName, EntryPoint = "tj3GetScalingFactors")]
+    internal static partial TjScalingFactor* GetScalingFactors(out int count);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3SetScalingFactor")]
+    internal static partial int SetScalingFactor(SafeTurboJpegHandle handle, TjScalingFactor factor);
+
+    internal static TurboJpegScalingFactor[] GetFilteredScalingFactors() =>
+        s_filteredScalingFactors.Value;
+
+    private static TurboJpegScalingFactor[] LoadFilteredScalingFactors()
+    {
+        var nativeFactors = GetScalingFactors(out var count);
+        if (nativeFactors == null || count <= 0)
+        {
+            throw CreateException(null);
+        }
+
+        var factors = new TurboJpegScalingFactor[count];
+        var filteredCount = 0;
+        for (var i = 0; i < count; i++)
+        {
+            var factor = nativeFactors[i];
+            if (factor.Numerator <= factor.Denominator)
+            {
+                factors[filteredCount++] = new TurboJpegScalingFactor(factor.Numerator, factor.Denominator);
+            }
+        }
+
+        if (filteredCount != count)
+        {
+            Array.Resize(ref factors, filteredCount);
+        }
+
+        return factors;
+    }
+
     internal static SafeTurboJpegHandle CreateDecoderHandle()
     {
         nint handle;
@@ -104,7 +150,7 @@ internal static unsafe partial class TurboJpegNative
             isFatal: errorCode == ErrorFatal);
     }
 
-    private static TurboJpegException CreateLoadException(Exception innerException)
+    internal static TurboJpegException CreateLoadException(Exception innerException)
     {
         var overridePath = Environment.GetEnvironmentVariable(TurboJpegNativeLoader.OverrideEnvironmentVariable);
         var location = string.IsNullOrWhiteSpace(overridePath)
