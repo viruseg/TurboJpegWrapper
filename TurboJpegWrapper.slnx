@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TurboJpegWrapper/TurboJpegWrapper.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TurboJpegWrapper.Tests/TurboJpegWrapper.Tests.csproj" />
+  </Folder>
+</Solution>
