@@ -10,8 +10,17 @@ namespace TurboJpegWrapper;
 /// </remarks>
 public sealed class TurboJpegDecoder : IDisposable
 {
+    private const int UnsetParameter = int.MinValue;
+
     private readonly TurboJpegDecodeOptions _defaultOptions;
     private SafeTurboJpegHandle? _handle;
+    private int _appliedBottomUp = UnsetParameter;
+    private int _appliedMaxPixels = UnsetParameter;
+    private int _appliedMaxMemory = UnsetParameter;
+    private int _appliedScanLimit = UnsetParameter;
+    private int _appliedFastDct = UnsetParameter;
+    private int _appliedFastUpsample = UnsetParameter;
+    private TurboJpegScalingFactor? _appliedScalingFactor;
 
     /// <summary>Initializes a new instance of the <see cref="TurboJpegDecoder"/> class.</summary>
     /// <param name="defaultOptions">Options used when a method does not receive explicit options.</param>
@@ -41,20 +50,41 @@ public sealed class TurboJpegDecoder : IDisposable
         return ReadHeader(jpeg);
     }
 
-    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file.</summary>
+    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file using the decoder's default options.</summary>
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <returns>The complete BMP file contents.</returns>
-    /// <exception cref="ArgumentException"><paramref name="jpeg"/> is empty.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty or the decoder's default scaling factor is not supported.
+    /// </exception>
     /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The decoded image would exceed the maximum array length.
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
-    public unsafe byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg)
+    public byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg) => DecodeToBmp(jpeg, _defaultOptions);
+
+    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file using the specified options.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <param name="options">The decoding options.</param>
+    /// <returns>The complete BMP file contents.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty or the requested scaling factor is not supported.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
+    public unsafe byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
         if (jpeg.IsEmpty)
@@ -69,8 +99,20 @@ public sealed class TurboJpegDecoder : IDisposable
                 $"Cannot decode a JPEG with {info.Precision}-bit precision and {info.Colorspace} colorspace to BMP.");
         }
 
-        var width = info.Width;
-        var height = info.Height;
+        ValidateScalingFactor(info, options);
+
+        var factor = options.ScalingFactor;
+        var width = ScaleDimension(info.Width, factor);
+        var height = ScaleDimension(info.Height, factor);
+
+        if (options.MaxPixels > 0 && (long)info.Width * info.Height > options.MaxPixels)
+        {
+            throw new TurboJpegImageTooLargeException(
+                $"The source image ({info.Width}x{info.Height}) contains " +
+                $"{(long)info.Width * info.Height} pixels, " +
+                $"which exceeds the configured maximum of {options.MaxPixels} pixels.");
+        }
+
         var total = BmpHeaderWriter.GetFileSize(width, height);
         if (total > Array.MaxLength)
         {
@@ -80,11 +122,17 @@ public sealed class TurboJpegDecoder : IDisposable
         }
 
         var handle = _handle!;
-        SetParameter(handle, TurboJpegNative.ParamBottomUp, 1);
-        SetParameter(handle, TurboJpegNative.ParamMaxPixels, _defaultOptions.MaxPixels);
-        SetParameter(handle, TurboJpegNative.ParamScanLimit, _defaultOptions.ScanLimit);
-        SetParameter(handle, TurboJpegNative.ParamFastDct, _defaultOptions.FastDct ? 1 : 0);
-        SetParameter(handle, TurboJpegNative.ParamFastUpsample, _defaultOptions.FastUpsampling ? 1 : 0);
+        ApplyParameter(handle, TurboJpegNative.ParamBottomUp, 1, ref _appliedBottomUp);
+        ApplyParameter(handle, TurboJpegNative.ParamMaxPixels, options.MaxPixels, ref _appliedMaxPixels);
+        ApplyParameter(handle, TurboJpegNative.ParamMaxMemory, options.MaxMemoryMegabytes, ref _appliedMaxMemory);
+        ApplyParameter(handle, TurboJpegNative.ParamScanLimit, options.ScanLimit, ref _appliedScanLimit);
+        ApplyParameter(handle, TurboJpegNative.ParamFastDct, options.FastDct ? 1 : 0, ref _appliedFastDct);
+        ApplyParameter(
+            handle,
+            TurboJpegNative.ParamFastUpsample,
+            options.FastUpsampling ? 1 : 0,
+            ref _appliedFastUpsample);
+        ApplyScalingFactor(handle, factor);
 
         var bmp = GC.AllocateUninitializedArray<byte>((int)total);
         BmpHeaderWriter.Write(bmp.AsSpan(0, BmpHeaderWriter.HeaderSize), width, height);
@@ -158,6 +206,87 @@ public sealed class TurboJpegDecoder : IDisposable
         {
             throw new ObjectDisposedException(nameof(TurboJpegDecoder));
         }
+    }
+
+    private static void ValidateScalingFactor(TurboJpegImageInfo info, TurboJpegDecodeOptions options)
+    {
+        var factor = options.ScalingFactor;
+
+        if (factor.Numerator <= 0 || factor.Denominator <= 0)
+        {
+            throw new ArgumentException(
+                $"The scaling factor {factor.Numerator}/{factor.Denominator} must have " +
+                "a positive numerator and denominator.",
+                nameof(options));
+        }
+
+        if (factor.Numerator > factor.Denominator)
+        {
+            throw new ArgumentException(
+                $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported; " +
+                "only downscaling factors up to 1:1 are allowed.",
+                nameof(options));
+        }
+
+        if (Array.IndexOf(TurboJpegNative.GetFilteredScalingFactors(), factor) < 0)
+        {
+            throw new ArgumentException(
+                $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported by TurboJPEG.",
+                nameof(options));
+        }
+
+        if (info.IsLossless && factor != TurboJpegScalingFactor.One)
+        {
+            throw new ArgumentException(
+                $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported " +
+                "for lossless JPEG images; use 1/1.",
+                nameof(options));
+        }
+    }
+
+    private static int ScaleDimension(int dimension, TurboJpegScalingFactor factor)
+    {
+        var scaled = ((long)dimension * factor.Numerator + factor.Denominator - 1) / factor.Denominator;
+        if (scaled > int.MaxValue)
+        {
+            throw new TurboJpegImageTooLargeException(
+                $"The scaled image dimension {scaled} exceeds the maximum supported dimension of {int.MaxValue}.");
+        }
+
+        return (int)scaled;
+    }
+
+    private void ApplyParameter(
+        SafeTurboJpegHandle handle, int parameter, int value, ref int appliedValue)
+    {
+        if (appliedValue == value)
+        {
+            return;
+        }
+
+        SetParameter(handle, parameter, value);
+        appliedValue = value;
+    }
+
+    private void ApplyScalingFactor(SafeTurboJpegHandle handle, TurboJpegScalingFactor factor)
+    {
+        if (_appliedScalingFactor == factor)
+        {
+            return;
+        }
+
+        if (TurboJpegNative.SetScalingFactor(
+                handle,
+                new TjScalingFactor
+                {
+                    Numerator = factor.Numerator,
+                    Denominator = factor.Denominator,
+                }) != 0)
+        {
+            throw TurboJpegNative.CreateException(handle);
+        }
+
+        _appliedScalingFactor = factor;
     }
 
     private static void SetParameter(SafeTurboJpegHandle handle, int parameter, int value)
