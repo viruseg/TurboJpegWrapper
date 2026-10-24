@@ -7,13 +7,16 @@ namespace TurboJpegWrapper;
 /// <remarks>
 /// A decoder owns a single native handle. Instance methods are not thread-safe; use one decoder
 /// per thread or synchronize access. After <see cref="Dispose"/> the instance cannot be reused.
-/// A failed JPEG header parse recreates the native handle so the decoder remains usable.
+/// A failed JPEG header parse recreates the native handle so the decoder remains usable. Recovery
+/// is best-effort: if recreation fails, the decoder becomes disposed and the original error is
+/// rethrown.
 /// </remarks>
 public sealed class TurboJpegDecoder : IDisposable
 {
     private const int UnsetParameter = int.MinValue;
 
     private readonly TurboJpegDecodeOptions _defaultOptions;
+    private readonly Func<SafeTurboJpegHandle> _handleFactory;
     private SafeTurboJpegHandle? _handle;
     private int _appliedBottomUp = UnsetParameter;
     private int _appliedMaxPixels = UnsetParameter;
@@ -26,9 +29,18 @@ public sealed class TurboJpegDecoder : IDisposable
     /// <summary>Initializes a new instance of the <see cref="TurboJpegDecoder"/> class.</summary>
     /// <param name="defaultOptions">Options used when a method does not receive explicit options.</param>
     public TurboJpegDecoder(TurboJpegDecodeOptions? defaultOptions = null)
+        : this(defaultOptions, TurboJpegNative.CreateDecoderHandle)
     {
+    }
+
+    internal TurboJpegDecoder(
+        TurboJpegDecodeOptions? defaultOptions, Func<SafeTurboJpegHandle> handleFactory)
+    {
+        ArgumentNullException.ThrowIfNull(handleFactory);
+
         _defaultOptions = defaultOptions ?? TurboJpegDecodeOptions.Default;
-        _handle = TurboJpegNative.CreateDecoderHandle();
+        _handleFactory = handleFactory;
+        _handle = handleFactory();
     }
 
     internal bool IsDisposed => _handle is null;
@@ -204,7 +216,16 @@ public sealed class TurboJpegDecoder : IDisposable
         }
         catch (TurboJpegException)
         {
-            RecreateHandleAfterFailure();
+            try
+            {
+                RecreateHandleAfterFailure();
+            }
+            catch
+            {
+                // WHY: recovery is best-effort; the original header error is rethrown below.
+                _handle = null;
+            }
+
             throw;
         }
     }
@@ -220,7 +241,7 @@ public sealed class TurboJpegDecoder : IDisposable
         _appliedFastDct = UnsetParameter;
         _appliedFastUpsample = UnsetParameter;
         _appliedScalingFactor = null;
-        _handle = TurboJpegNative.CreateDecoderHandle();
+        _handle = _handleFactory();
     }
 
     private void ThrowIfDisposed()

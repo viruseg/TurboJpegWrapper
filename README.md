@@ -53,6 +53,9 @@ TurboJpegImageInfo info = decoder.GetImageInfo(jpeg);
 
 Both `DecodeToBmp` overloads and `GetImageInfo` throw `ObjectDisposedException` after the decoder is disposed.
 
+If a JPEG header parse fails, the decoder recreates its native handle. If recreation fails,
+the decoder becomes disposed and the original exception is rethrown.
+
 ### Options
 
 `TurboJpegDecodeOptions` is immutable. All limits are disabled by `0`.

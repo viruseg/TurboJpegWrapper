@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using TurboJpegWrapper;
 using TurboJpegWrapper.Internal.Bmp;
+using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Tests;
 
@@ -172,6 +173,36 @@ public sealed class DecodeToBmpTests
         Assert.InRange((int)r, 120, 136);
         Assert.InRange((int)g, 120, 136);
         Assert.InRange((int)b, 120, 136);
+    }
+
+    [Fact]
+    public void DecodeToBmp_HeaderFailureAndRecreateFailure_PreservesOriginalException()
+    {
+        var jpeg = TestFixtures.Load("baseline-444.jpg");
+
+        string expectedMessage;
+        using (var reference = new TurboJpegDecoder())
+        {
+            expectedMessage = Assert.Throws<TurboJpegException>(
+                () => reference.DecodeToBmp(jpeg.AsSpan(0, jpeg.Length / 2))).Message;
+        }
+
+        var calls = 0;
+        using var decoder = new TurboJpegDecoder(null, () =>
+        {
+            if (Interlocked.Increment(ref calls) == 2)
+            {
+                throw new TurboJpegException("handle recreation failed");
+            }
+
+            return TurboJpegNative.CreateDecoderHandle();
+        });
+
+        var exception = Assert.Throws<TurboJpegException>(
+            () => decoder.DecodeToBmp(jpeg.AsSpan(0, jpeg.Length / 2)));
+
+        Assert.Equal(expectedMessage, exception.Message);
+        Assert.Throws<ObjectDisposedException>(() => decoder.DecodeToBmp(jpeg));
     }
 
     [Fact]
