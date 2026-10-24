@@ -61,4 +61,50 @@ public sealed class ScalingFactorTests
         Assert.Equal(3, numerator);
         Assert.Equal(4, denominator);
     }
+
+    [Fact]
+    public void With_ValidComponent_PreservesOtherComponent()
+    {
+        var factor = new TurboJpegScalingFactor(1, 2) with { Numerator = 3 };
+
+        Assert.Equal(3, factor.Numerator);
+        Assert.Equal(2, factor.Denominator);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void With_NonPositiveNumerator_ThrowsArgumentOutOfRangeException(int numerator)
+    {
+        var factor = new TurboJpegScalingFactor(1, 2);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _ = factor with { Numerator = numerator });
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void With_NonPositiveDenominator_ThrowsArgumentOutOfRangeException(int denominator)
+    {
+        var factor = new TurboJpegScalingFactor(1, 2);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _ = factor with { Denominator = denominator });
+    }
+
+    [Fact]
+    public void ObjectInitializer_ValidComponents_CreatesFactor()
+    {
+        var factor = new TurboJpegScalingFactor { Numerator = 1, Denominator = 2 };
+
+        Assert.Equal(0.5, factor.Value);
+    }
+
+    [Fact]
+    public void Constructor_NamedArguments_CreatesFactor()
+    {
+        var factor = new TurboJpegScalingFactor(Numerator: 3, Denominator: 4);
+
+        Assert.Equal(3, factor.Numerator);
+        Assert.Equal(4, factor.Denominator);
+    }
 }

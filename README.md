@@ -108,7 +108,7 @@ The wrapper does not apply EXIF orientation and does not perform ICC color manag
 
 The package bundles `runtimes/win-x64/native/turbojpeg.dll`.
 
-Set `TURBOJPEG_NATIVE_LIBRARY_PATH` to the full path of a native library file to override discovery. When the variable is set to a non-empty value, it is the only location used; an invalid path fails immediately instead of falling back.
+Set `TURBOJPEG_NATIVE_LIBRARY_PATH` to the full path of a native library file to override discovery. When the variable is set to a non-blank value, it is the only location used; an invalid path fails immediately instead of falling back.
 
 Otherwise the resolver tries, in order:
 
