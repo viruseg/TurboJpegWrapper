@@ -2,17 +2,21 @@ using System.Collections.Concurrent;
 
 namespace TurboJpegWrapper.Internal.Pooling;
 
-internal static class TurboJpegDecoderPool
+internal sealed class TurboJpegDecoderPool
 {
-    private static readonly ConcurrentQueue<TurboJpegDecoder> s_decoders = new();
-    private static readonly int s_cap = Math.Max(4, Environment.ProcessorCount * 2);
-    private static int s_retained;
+    internal static TurboJpegDecoderPool Shared { get; } = new();
 
-    internal static TurboJpegDecoder Rent()
+    private readonly ConcurrentQueue<TurboJpegDecoder> _decoders = new();
+    private readonly int _cap = Math.Max(4, Environment.ProcessorCount * 2);
+    private int _retained;
+
+    internal int Count => _decoders.Count;
+
+    internal TurboJpegDecoder Rent()
     {
-        while (s_decoders.TryDequeue(out var decoder))
+        while (_decoders.TryDequeue(out var decoder))
         {
-            Interlocked.Decrement(ref s_retained);
+            Interlocked.Decrement(ref _retained);
 
             if (decoder.IsDisposed)
             {
@@ -26,20 +30,20 @@ internal static class TurboJpegDecoderPool
         return new TurboJpegDecoder();
     }
 
-    internal static void Return(TurboJpegDecoder decoder)
+    internal void Return(TurboJpegDecoder decoder)
     {
         if (decoder.IsDisposed)
         {
             return;
         }
 
-        if (Interlocked.Increment(ref s_retained) <= s_cap)
+        if (Interlocked.Increment(ref _retained) <= _cap)
         {
-            s_decoders.Enqueue(decoder);
+            _decoders.Enqueue(decoder);
             return;
         }
 
-        Interlocked.Decrement(ref s_retained);
+        Interlocked.Decrement(ref _retained);
         decoder.Dispose();
     }
 }

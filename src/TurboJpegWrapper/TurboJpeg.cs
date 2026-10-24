@@ -61,7 +61,7 @@ public static class TurboJpeg
         TurboJpegDecoder? decoder = null;
         try
         {
-            decoder = TurboJpegDecoderPool.Rent();
+            decoder = TurboJpegDecoderPool.Shared.Rent();
             return decoder.DecodeToBmp(jpeg, options);
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
@@ -72,7 +72,7 @@ public static class TurboJpeg
         {
             if (decoder is not null)
             {
-                TurboJpegDecoderPool.Return(decoder);
+                TurboJpegDecoderPool.Shared.Return(decoder);
             }
         }
     }
@@ -87,7 +87,7 @@ public static class TurboJpeg
         TurboJpegDecoder? decoder = null;
         try
         {
-            decoder = TurboJpegDecoderPool.Rent();
+            decoder = TurboJpegDecoderPool.Shared.Rent();
             return decoder.GetImageInfo(jpeg);
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
@@ -98,7 +98,7 @@ public static class TurboJpeg
         {
             if (decoder is not null)
             {
-                TurboJpegDecoderPool.Return(decoder);
+                TurboJpegDecoderPool.Shared.Return(decoder);
             }
         }
     }

@@ -87,14 +87,17 @@ public sealed class StaticApiTests
     }
 
     [Fact]
-    public void Pool_DoesNotRetainDisposedDecoder()
+    public void Pool_Return_DoesNotEnqueueDisposedDecoder()
     {
+        var pool = new TurboJpegDecoderPool();
         var disposed = new TurboJpegDecoder();
         disposed.Dispose();
 
-        TurboJpegDecoderPool.Return(disposed);
+        pool.Return(disposed);
 
-        var rented = TurboJpegDecoderPool.Rent();
+        Assert.Equal(0, pool.Count);
+
+        var rented = pool.Rent();
         try
         {
             Assert.False(rented.IsDisposed);
