@@ -1,4 +1,7 @@
 using System.Buffers.Binary;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Bmp;
+using SixLabors.ImageSharp.PixelFormats;
 using TurboJpegWrapper;
 using TurboJpegWrapper.Internal.Bmp;
 
@@ -178,16 +181,17 @@ public sealed class BmpBitDepthTests
     }
 
     [Fact]
-    public void DecodeToBmp_24Bit_OpensWithSystemDrawing()
+    public void DecodeToBmp_24Bit_OpensWithImageSharp()
     {
         var bmp = Decode("baseline-444.jpg", TurboJpegBmpBitDepth.Bpp24);
 
-        using var bitmap = new System.Drawing.Bitmap(new MemoryStream(bmp));
-        Assert.Equal(System.Drawing.Imaging.PixelFormat.Format24bppRgb, bitmap.PixelFormat);
-        Assert.Equal(FixtureWidth, bitmap.Width);
-        Assert.Equal(FixtureHeight, bitmap.Height);
+        using var stream = new MemoryStream(bmp);
+        using var image = Image.Load<Rgba32>(stream);
+        Assert.Equal(BmpBitsPerPixel.Pixel24, image.Metadata.GetBmpMetadata().BitsPerPixel);
+        Assert.Equal(FixtureWidth, image.Width);
+        Assert.Equal(FixtureHeight, image.Height);
 
-        var pixel = bitmap.GetPixel(10, 2);
+        var pixel = image[10, 2];
         Assert.Equal(255, pixel.A);
         Assert.InRange(pixel.R, 247, 255);
         Assert.InRange(pixel.G, 0, 8);
@@ -212,10 +216,11 @@ public sealed class BmpBitDepthTests
     {
         var bmp = Decode("baseline-444.jpg", TurboJpegBmpBitDepth.Bpp8);
 
-        using var bitmap = new System.Drawing.Bitmap(new MemoryStream(bmp));
-        Assert.Equal(System.Drawing.Imaging.PixelFormat.Format8bppIndexed, bitmap.PixelFormat);
-        Assert.Equal(FixtureWidth, bitmap.Width);
-        Assert.Equal(FixtureHeight, bitmap.Height);
+        using var stream = new MemoryStream(bmp);
+        using var image = Image.Load<Rgba32>(stream);
+        Assert.Equal(BmpBitsPerPixel.Pixel8, image.Metadata.GetBmpMetadata().BitsPerPixel);
+        Assert.Equal(FixtureWidth, image.Width);
+        Assert.Equal(FixtureHeight, image.Height);
 
         for (var y = 0; y < FixtureHeight; y++)
         {
@@ -228,7 +233,7 @@ public sealed class BmpBitDepthTests
             }
         }
 
-        var redBand = bitmap.GetPixel(10, 2);
+        var redBand = image[10, 2];
         Assert.InRange(redBand.R, 68, 84);
     }
 

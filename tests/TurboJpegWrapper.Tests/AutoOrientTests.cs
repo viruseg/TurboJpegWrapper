@@ -1,16 +1,16 @@
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.Linq;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.PixelFormats;
 using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Tests;
 
 public sealed class AutoOrientTests
 {
-    private static readonly int Red = Color.Red.ToArgb();
-    private static readonly int Green = Color.Lime.ToArgb();
-    private static readonly int Blue = Color.Blue.ToArgb();
-    private static readonly int Yellow = Color.Yellow.ToArgb();
+    private const int Red = 0xFF0000;
+    private const int Green = 0x00FF00;
+    private const int Blue = 0x0000FF;
+    private const int Yellow = 0xFFFF00;
     private static readonly Lazy<byte[]> AsymmetricJpeg = new(CreateAsymmetricJpeg);
 
     public static IEnumerable<object[]> AsymmetricOrientations()
@@ -375,10 +375,12 @@ public sealed class AutoOrientTests
         }
     }
 
-    private static void AssertColor(byte[] bmp, int x, int y, int argb, int tolerance)
+    private static void AssertColor(byte[] bmp, int x, int y, int rgb, int tolerance)
     {
-        var expected = Color.FromArgb(argb);
-        AssertColor(bmp, x, y, expected.R, expected.G, expected.B, tolerance);
+        var r = (byte)((rgb >> 16) & 0xFF);
+        var g = (byte)((rgb >> 8) & 0xFF);
+        var b = (byte)(rgb & 0xFF);
+        AssertColor(bmp, x, y, r, g, b, tolerance);
     }
 
     private static void AssertColor(
@@ -394,33 +396,51 @@ public sealed class AutoOrientTests
 
     private static byte[] CreateAsymmetricJpeg()
     {
-        using var bitmap = new Bitmap(
-            TestFixtures.Width, TestFixtures.Height, PixelFormat.Format24bppRgb);
+        using var image = new Image<Rgb24>(
+            TestFixtures.Width, TestFixtures.Height, new Rgb24(255, 0, 0));
 
-        using (var graphics = Graphics.FromImage(bitmap))
+        var halfWidth = TestFixtures.Width / 2;
+        var halfHeight = TestFixtures.Height / 2;
+
+        image.ProcessPixelRows(accessor =>
         {
-            var halfWidth = TestFixtures.Width / 2;
-            var halfHeight = TestFixtures.Height / 2;
-
-            graphics.Clear(Color.Red);
-            graphics.FillRectangle(
-                Brushes.Lime, halfWidth, 0, TestFixtures.Width - halfWidth, halfHeight);
-            graphics.FillRectangle(
-                Brushes.Blue, 0, halfHeight, halfWidth, TestFixtures.Height - halfHeight);
-            graphics.FillRectangle(
-                Brushes.Yellow,
+            Fill(
+                accessor,
+                halfWidth,
+                0,
+                TestFixtures.Width - halfWidth,
+                halfHeight,
+                new Rgb24(0, 255, 0));
+            Fill(
+                accessor,
+                0,
+                halfHeight,
+                halfWidth,
+                TestFixtures.Height - halfHeight,
+                new Rgb24(0, 0, 255));
+            Fill(
+                accessor,
                 halfWidth,
                 halfHeight,
                 TestFixtures.Width - halfWidth,
-                TestFixtures.Height - halfHeight);
-        }
+                TestFixtures.Height - halfHeight,
+                new Rgb24(255, 255, 0));
+        });
 
         using var stream = new MemoryStream();
-        var encoder = ImageCodecInfo.GetImageEncoders()
-            .First(codec => codec.FormatID == ImageFormat.Jpeg.Guid);
-        using var parameters = new EncoderParameters(1);
-        parameters.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
-        bitmap.Save(stream, encoder, parameters);
+        image.SaveAsJpeg(stream, new JpegEncoder
+        {
+            Quality = 100,
+            ColorType = JpegEncodingColor.YCbCrRatio444
+        });
         return stream.ToArray();
+
+        static void Fill(PixelAccessor<Rgb24> rows, int x, int y, int width, int height, Rgb24 color)
+        {
+            for (var row = y; row < y + height; row++)
+            {
+                rows.GetRowSpan(row).Slice(x, width).Fill(color);
+            }
+        }
     }
 }

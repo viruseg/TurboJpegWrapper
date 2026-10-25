@@ -1,4 +1,6 @@
 using System.Buffers.Binary;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using TurboJpegWrapper;
 using TurboJpegWrapper.Internal.Bmp;
 using TurboJpegWrapper.Internal.Native;
@@ -33,15 +35,16 @@ public sealed class DecodeToBmpTests
     }
 
     [Fact]
-    public void DecodeToBmp_OpensWithSystemDrawing()
+    public void DecodeToBmp_OpensWithImageSharp()
     {
         using var decoder = new TurboJpegDecoder();
         var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"));
 
-        using var bitmap = new System.Drawing.Bitmap(new MemoryStream(bmp));
-        Assert.Equal(35, bitmap.Width);
-        Assert.Equal(23, bitmap.Height);
-        Assert.Equal(255, bitmap.GetPixel(10, 2).A);
+        using var stream = new MemoryStream(bmp);
+        using var image = Image.Load<Rgba32>(stream);
+        Assert.Equal(35, image.Width);
+        Assert.Equal(23, image.Height);
+        Assert.Equal(255, image[10, 2].A);
     }
 
     [Fact]
