@@ -6,6 +6,23 @@ internal static class BmpHeaderWriter
 {
     internal const int HeaderSize = 54;
     internal const int GrayscalePaletteSize = 256 * 4;
+    internal const int DefaultPixelsPerMeter = 2835;
+
+    internal static int ToPixelsPerMeter(int density, TurboJpegDensityUnits units)
+    {
+        if (density <= 0)
+        {
+            return DefaultPixelsPerMeter;
+        }
+
+        return units switch
+        {
+            TurboJpegDensityUnits.PixelsPerInch =>
+                checked((int)((density * 10_000L + 127) / 254)),
+            TurboJpegDensityUnits.PixelsPerCentimeter => checked(density * 100),
+            _ => DefaultPixelsPerMeter
+        };
+    }
 
     internal static int GetBytesPerPixel(TurboJpegBmpBitDepth bitDepth) =>
         bitDepth switch
@@ -29,7 +46,12 @@ internal static class BmpHeaderWriter
         checked(GetPixelOffset(bitDepth) + (long)GetRowStride(width, bitDepth) * height);
 
     internal static void Write(
-        Span<byte> destination, int width, int height, TurboJpegBmpBitDepth bitDepth)
+        Span<byte> destination,
+        int width,
+        int height,
+        TurboJpegBmpBitDepth bitDepth,
+        int pixelsPerMeterX = DefaultPixelsPerMeter,
+        int pixelsPerMeterY = DefaultPixelsPerMeter)
     {
         if (width <= 0)
         {
@@ -67,8 +89,8 @@ internal static class BmpHeaderWriter
         BinaryPrimitives.WriteUInt16LittleEndian(destination[28..], (ushort)bitsPerPixel);
         BinaryPrimitives.WriteInt32LittleEndian(destination[30..], 0);
         BinaryPrimitives.WriteInt32LittleEndian(destination[34..], imageSize);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[38..], 2835);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[42..], 2835);
+        BinaryPrimitives.WriteInt32LittleEndian(destination[38..], pixelsPerMeterX);
+        BinaryPrimitives.WriteInt32LittleEndian(destination[42..], pixelsPerMeterY);
         BinaryPrimitives.WriteInt32LittleEndian(
             destination[46..], bitDepth == TurboJpegBmpBitDepth.Bpp8 ? 256 : 0);
         BinaryPrimitives.WriteInt32LittleEndian(destination[50..], 0);

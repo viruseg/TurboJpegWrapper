@@ -18,6 +18,12 @@ internal static class BmpTestHelpers
     internal static int RowStride(byte[] bmp) =>
         (Width(bmp) * (BitsPerPixel(bmp) / 8) + 3) & ~3;
 
+    internal static int PixelsPerMeterX(byte[] bmp) =>
+        BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(38));
+
+    internal static int PixelsPerMeterY(byte[] bmp) =>
+        BinaryPrimitives.ReadInt32LittleEndian(bmp.AsSpan(42));
+
     internal static (byte B, byte G, byte R, byte A) Pixel(byte[] bmp, int x, int y)
     {
         var bitsPerPixel = BitsPerPixel(bmp);

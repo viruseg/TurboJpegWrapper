@@ -96,6 +96,26 @@ internal static class JpegPatcher
         byte[] jpeg, ushort orientation, bool bigEndian = false) =>
         WithSegment(jpeg, 0xE1, CreateExifPayload(orientation, bigEndian));
 
+    internal static void SetJfifDensity(
+        byte[] jpeg, ushort xDensity, ushort yDensity, byte units)
+    {
+        ArgumentNullException.ThrowIfNull(jpeg);
+
+        if (jpeg.Length < 20
+            || jpeg[0] != 0xFF
+            || jpeg[1] != 0xD8
+            || jpeg[2] != 0xFF
+            || jpeg[3] != 0xE0
+            || !jpeg.AsSpan(6, 4).SequenceEqual("JFIF"u8))
+        {
+            throw new ArgumentException("The JPEG must start with a JFIF APP0 segment.", nameof(jpeg));
+        }
+
+        jpeg[13] = units;
+        BinaryPrimitives.WriteUInt16BigEndian(jpeg.AsSpan(14, 2), xDensity);
+        BinaryPrimitives.WriteUInt16BigEndian(jpeg.AsSpan(16, 2), yDensity);
+    }
+
     internal static byte[] CreateExifPayload(
         ushort orientation, bool bigEndian = false, ushort tag = 0x0112)
     {

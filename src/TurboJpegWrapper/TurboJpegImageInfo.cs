@@ -21,4 +21,13 @@ public readonly record struct TurboJpegImageInfo(
     public bool CanDecodeToBmp =>
         Precision == 8 &&
         Colorspace is not TurboJpegColorspace.Cmyk and not TurboJpegColorspace.Ycck;
+
+    /// <summary>Gets the horizontal pixel density from the JPEG header.</summary>
+    public int DensityX { get; init; }
+
+    /// <summary>Gets the vertical pixel density from the JPEG header.</summary>
+    public int DensityY { get; init; }
+
+    /// <summary>Gets the units of <see cref="DensityX"/> and <see cref="DensityY"/>.</summary>
+    public TurboJpegDensityUnits DensityUnits { get; init; }
 }

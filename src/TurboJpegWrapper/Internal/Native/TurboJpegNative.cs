@@ -33,6 +33,9 @@ internal static unsafe partial class TurboJpegNative
     internal const int ParamFastDct = 10;
     internal const int ParamScanLimit = 13;
     internal const int ParamLossless = 15;
+    internal const int ParamXDensity = 20;
+    internal const int ParamYDensity = 21;
+    internal const int ParamDensityUnits = 22;
     internal const int ParamMaxMemory = 23;
     internal const int ParamMaxPixels = 24;
     internal const int ParamSaveMarkers = 25;

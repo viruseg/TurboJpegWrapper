@@ -53,6 +53,19 @@ public enum TurboJpegSubsampling
     Yuv24 = 8
 }
 
+/// <summary>Units of the pixel density stored in the JPEG header.</summary>
+public enum TurboJpegDensityUnits
+{
+    /// <summary>The pixel density units are unknown.</summary>
+    Unknown = 0,
+
+    /// <summary>The pixel density is expressed in pixels per inch.</summary>
+    PixelsPerInch = 1,
+
+    /// <summary>The pixel density is expressed in pixels per centimeter.</summary>
+    PixelsPerCentimeter = 2
+}
+
 /// <summary>Bits per pixel of the BMP produced by decoding.</summary>
 public enum TurboJpegBmpBitDepth
 {

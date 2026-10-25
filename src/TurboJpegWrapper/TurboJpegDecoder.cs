@@ -62,7 +62,7 @@ public sealed class TurboJpegDecoder : IDisposable
             throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
         }
 
-        return ReadHeader(jpeg);
+        return ReadHeader(jpeg, includeDensity: true);
     }
 
     /// <summary>Decodes a JPEG image to a complete BMP file using the decoder's default options.</summary>
@@ -106,7 +106,7 @@ public sealed class TurboJpegDecoder : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
-        var plan = CreatePlan(jpeg, options);
+        var plan = CreatePlan(jpeg, options, includeDensity: true);
         var bmp = GC.AllocateUninitializedArray<byte>(plan.TotalSize);
         DecodeWithPlan(jpeg, options, in plan, bmp);
         return bmp;
@@ -141,7 +141,7 @@ public sealed class TurboJpegDecoder : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
-        var plan = CreatePlan(jpeg, options);
+        var plan = CreatePlan(jpeg, options, includeDensity: true);
         if (destination.Length < plan.TotalSize)
         {
             throw new ArgumentException(
@@ -189,17 +189,18 @@ public sealed class TurboJpegDecoder : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
-        return CreatePlan(jpeg, options).TotalSize;
+        return CreatePlan(jpeg, options, includeDensity: false).TotalSize;
     }
 
-    private DecodePlan CreatePlan(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
+    private DecodePlan CreatePlan(
+        ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options, bool includeDensity)
     {
         if (jpeg.IsEmpty)
         {
             throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
         }
 
-        var info = ReadHeader(jpeg);
+        var info = ReadHeader(jpeg, includeDensity);
         if (!info.CanDecodeToBmp)
         {
             throw new TurboJpegUnsupportedException(
@@ -244,6 +245,9 @@ public sealed class TurboJpegDecoder : IDisposable
             _ => throw new ArgumentOutOfRangeException(nameof(options), bitDepth, null)
         };
 
+        var pixelsPerMeterX = BmpHeaderWriter.ToPixelsPerMeter(info.DensityX, info.DensityUnits);
+        var pixelsPerMeterY = BmpHeaderWriter.ToPixelsPerMeter(info.DensityY, info.DensityUnits);
+
         return new DecodePlan(
             width,
             height,
@@ -255,6 +259,8 @@ public sealed class TurboJpegDecoder : IDisposable
             BmpHeaderWriter.GetPixelOffset(bitDepth),
             BmpHeaderWriter.GetBytesPerPixel(bitDepth),
             BmpHeaderWriter.GetRowStride(outputWidth, bitDepth),
+            pixelsPerMeterX,
+            pixelsPerMeterY,
             (int)total,
             swapsAxes);
     }
@@ -268,7 +274,13 @@ public sealed class TurboJpegDecoder : IDisposable
         var handle = _handle!;
         ApplyParameters(handle, options, plan.Orientation);
 
-        BmpHeaderWriter.Write(bmp, plan.OutputWidth, plan.OutputHeight, plan.BitDepth);
+        BmpHeaderWriter.Write(
+            bmp,
+            plan.OutputWidth,
+            plan.OutputHeight,
+            plan.BitDepth,
+            plan.PixelsPerMeterX,
+            plan.PixelsPerMeterY);
         BmpHeaderWriter.ClearPadding(bmp, plan.OutputWidth, plan.OutputHeight, plan.BitDepth);
 
         if (!plan.SwapsAxes)
@@ -344,6 +356,8 @@ public sealed class TurboJpegDecoder : IDisposable
             int pixelOffset,
             int bytesPerPixel,
             int outputStride,
+            int pixelsPerMeterX,
+            int pixelsPerMeterY,
             int totalSize,
             bool swapsAxes)
         {
@@ -357,6 +371,8 @@ public sealed class TurboJpegDecoder : IDisposable
             PixelOffset = pixelOffset;
             BytesPerPixel = bytesPerPixel;
             OutputStride = outputStride;
+            PixelsPerMeterX = pixelsPerMeterX;
+            PixelsPerMeterY = pixelsPerMeterY;
             TotalSize = totalSize;
             SwapsAxes = swapsAxes;
         }
@@ -380,6 +396,10 @@ public sealed class TurboJpegDecoder : IDisposable
         internal int BytesPerPixel { get; }
 
         internal int OutputStride { get; }
+
+        internal int PixelsPerMeterX { get; }
+
+        internal int PixelsPerMeterY { get; }
 
         internal int TotalSize { get; }
 
@@ -416,7 +436,7 @@ public sealed class TurboJpegDecoder : IDisposable
         _handle = null;
     }
 
-    private unsafe TurboJpegImageInfo ReadHeader(ReadOnlySpan<byte> jpeg)
+    private unsafe TurboJpegImageInfo ReadHeader(ReadOnlySpan<byte> jpeg, bool includeDensity)
     {
         var handle = _handle;
         if (handle is null)
@@ -440,6 +460,15 @@ public sealed class TurboJpegDecoder : IDisposable
             var colorspace = TurboJpegNative.Get(handle, TurboJpegNative.ParamColorspace);
             var subsampling = TurboJpegNative.Get(handle, TurboJpegNative.ParamSubsamp);
             var lossless = TurboJpegNative.Get(handle, TurboJpegNative.ParamLossless);
+            var densityX = includeDensity
+                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamXDensity)
+                : 0;
+            var densityY = includeDensity
+                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamYDensity)
+                : 0;
+            var densityUnits = includeDensity
+                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamDensityUnits)
+                : 0;
 
             if (width <= 0 || height <= 0)
             {
@@ -452,7 +481,12 @@ public sealed class TurboJpegDecoder : IDisposable
                 precision,
                 (TurboJpegColorspace)colorspace,
                 (TurboJpegSubsampling)subsampling,
-                lossless != 0);
+                lossless != 0)
+            {
+                DensityX = densityX,
+                DensityY = densityY,
+                DensityUnits = (TurboJpegDensityUnits)densityUnits
+            };
         }
         catch (TurboJpegException)
         {

@@ -105,6 +105,7 @@ the decoder becomes disposed and the original exception is rethrown.
 - Rows are padded to a 4-byte boundary: `stride = (width * bytesPerPixel + 3) & ~3`. Padding bytes are zero; 32-bit rows need no padding.
 - Pixel data starts at 54 bytes for 24/32 bpp and at 1078 bytes for 8 bpp.
 - `biSizeImage` is `stride * height`; the file size is `pixelOffset + stride * height`.
+- `biXPelsPerMeter` and `biYPelsPerMeter` are derived from the JFIF density when the JPEG stores it in dots per inch or dots per centimeter; otherwise they default to 2835 (72 DPI). `TurboJpegImageInfo` exposes the raw `DensityX`, `DensityY`, and `DensityUnits` values.
 - With `AutoOrient`, the header describes the upright image; orientations 5-8 transpose the width and height.
 
 ## Supported inputs
