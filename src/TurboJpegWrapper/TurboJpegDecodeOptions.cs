@@ -13,8 +13,10 @@ public sealed class TurboJpegDecodeOptions
     /// <param name="maxPixels">The maximum number of source pixels; 0 means no limit.</param>
     /// <param name="maxMemoryMegabytes">The maximum intermediate memory in megabytes; 0 means no limit.</param>
     /// <param name="scanLimit">The maximum number of progressive scans; 0 means no limit.</param>
+    /// <param name="bmpBitDepth">The BMP output bit depth.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// A limit is negative or the scaling factor numerator or denominator is not positive.
+    /// A limit is negative, the scaling factor numerator or denominator is not positive,
+    /// or the BMP bit depth is not 8, 24, or 32.
     /// </exception>
     public TurboJpegDecodeOptions(
         TurboJpegScalingFactor? scalingFactor = null,
@@ -22,7 +24,8 @@ public sealed class TurboJpegDecodeOptions
         bool fastUpsampling = false,
         int maxPixels = 100_000_000,
         int maxMemoryMegabytes = 0,
-        int scanLimit = 500)
+        int scanLimit = 500,
+        TurboJpegBmpBitDepth bmpBitDepth = TurboJpegBmpBitDepth.Bpp32)
     {
         var scaling = scalingFactor ?? TurboJpegScalingFactor.One;
 
@@ -56,12 +59,21 @@ public sealed class TurboJpegDecodeOptions
                 nameof(scanLimit), scanLimit, "The scan limit must not be negative.");
         }
 
+        if (bmpBitDepth is not TurboJpegBmpBitDepth.Bpp8
+            and not TurboJpegBmpBitDepth.Bpp24
+            and not TurboJpegBmpBitDepth.Bpp32)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(bmpBitDepth), bmpBitDepth, "The BMP bit depth must be 8, 24, or 32.");
+        }
+
         ScalingFactor = scaling;
         FastDct = fastDct;
         FastUpsampling = fastUpsampling;
         MaxPixels = maxPixels;
         MaxMemoryMegabytes = maxMemoryMegabytes;
         ScanLimit = scanLimit;
+        BmpBitDepth = bmpBitDepth;
     }
 
     /// <summary>Gets the output scaling factor.</summary>
@@ -81,4 +93,7 @@ public sealed class TurboJpegDecodeOptions
 
     /// <summary>Gets the maximum number of progressive scans; 0 means no limit.</summary>
     public int ScanLimit { get; }
+
+    /// <summary>Gets the BMP output bit depth.</summary>
+    public TurboJpegBmpBitDepth BmpBitDepth { get; }
 }

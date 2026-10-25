@@ -210,4 +210,27 @@ public sealed class DecodeOptionsTests
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new TurboJpegDecodeOptions(scalingFactor: default(TurboJpegScalingFactor)));
     }
+
+    [Fact]
+    public void Constructor_BmpBitDepth_DefaultsTo32()
+    {
+        Assert.Equal(TurboJpegBmpBitDepth.Bpp32, new TurboJpegDecodeOptions().BmpBitDepth);
+        Assert.Equal(TurboJpegBmpBitDepth.Bpp32, TurboJpegDecodeOptions.Default.BmpBitDepth);
+    }
+
+    [Theory]
+    [InlineData(TurboJpegBmpBitDepth.Bpp8)]
+    [InlineData(TurboJpegBmpBitDepth.Bpp24)]
+    [InlineData(TurboJpegBmpBitDepth.Bpp32)]
+    public void Constructor_BmpBitDepth_IsExposed(TurboJpegBmpBitDepth bitDepth)
+    {
+        Assert.Equal(bitDepth, new TurboJpegDecodeOptions(bmpBitDepth: bitDepth).BmpBitDepth);
+    }
+
+    [Fact]
+    public void Constructor_UndefinedBmpBitDepth_ThrowsArgumentOutOfRangeException()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TurboJpegDecodeOptions(bmpBitDepth: (TurboJpegBmpBitDepth)12));
+    }
 }

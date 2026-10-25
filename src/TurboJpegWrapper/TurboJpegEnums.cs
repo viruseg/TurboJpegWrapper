@@ -52,3 +52,16 @@ public enum TurboJpegSubsampling
     /// <summary>4:2:4 chroma subsampling.</summary>
     Yuv24 = 8
 }
+
+/// <summary>Bits per pixel of the BMP produced by decoding.</summary>
+public enum TurboJpegBmpBitDepth
+{
+    /// <summary>8-bit grayscale with a 256-entry grayscale palette.</summary>
+    Bpp8 = 8,
+
+    /// <summary>24-bit BGR.</summary>
+    Bpp24 = 24,
+
+    /// <summary>32-bit BGRA with opaque alpha.</summary>
+    Bpp32 = 32
+}
