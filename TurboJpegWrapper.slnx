@@ -1,8 +1,5 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/TurboJpegWrapper/TurboJpegWrapper.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/TurboJpegWrapper.Tests/TurboJpegWrapper.Tests.csproj" />
-  </Folder>
+  <Project Path="src/TurboJpegWrapper/TurboJpegWrapper.csproj" />
+  <Project Path="tests/TurboJpegWrapper.Tests/TurboJpegWrapper.Tests.csproj" />
+  <Project Path="bench/TurboJpegWrapper.Benchmark/TurboJpegWrapper.Benchmark.csproj" />
 </Solution>

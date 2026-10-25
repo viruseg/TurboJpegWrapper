@@ -430,3 +430,5 @@ docs/
 .superpowers/
 
 .idea/
+
+secrets/
