@@ -7,8 +7,29 @@ The library is decode-only. It does not encode JPEGs or expose YUV buffers. Turb
 ## Requirements
 
 - .NET 10.
-- A TurboJPEG 3.2+ native library. The package bundles libjpeg-turbo 3.2.0 for Windows x64/ARM64, Linux x64/ARM64, and macOS x64/ARM64. Linux binaries require glibc 2.17+ and do not support musl/Alpine; macOS requires 10.7+ on x64 and 11+ on ARM64.
+- The managed package plus exactly one native package for the target runtime. The native packages bundle libjpeg-turbo 3.2.0 for Windows x64/ARM64, Linux x64/ARM64, and macOS x64/ARM64. Linux binaries require glibc 2.17+ and do not support musl/Alpine; macOS requires 10.7+ on x64 and 11+ on ARM64.
 - x86 is not supported.
+
+## Installation
+
+The managed package contains no native code. Add it together with exactly one native package that matches the deployment runtime:
+
+```bash
+dotnet add package TurboJpeg.Wrapper.Decoder --prerelease
+dotnet add package TurboJpeg.Wrapper.Decoder.Native.win-x64 --prerelease
+```
+
+| Runtime | Native package |
+| --- | --- |
+| `win-x64` | `TurboJpeg.Wrapper.Decoder.Native.win-x64` |
+| `win-arm64` | `TurboJpeg.Wrapper.Decoder.Native.win-arm64` |
+| `linux-x64` | `TurboJpeg.Wrapper.Decoder.Native.linux-x64` |
+| `linux-arm64` | `TurboJpeg.Wrapper.Decoder.Native.linux-arm64` |
+| `osx-x64`, `osx-arm64` | `TurboJpeg.Wrapper.Decoder.Native.osx-universal` |
+
+Packages are published as prereleases, so `--prerelease` is required. The package and assembly names are `TurboJpeg.Wrapper.Decoder`; the C# namespace is `TurboJpegWrapper.Decoder`.
+
+If the matching native package is missing, the first decode throws `TurboJpegException` with the expected native library paths.
 
 ## Quick start
 
@@ -136,7 +157,7 @@ With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segme
 
 ## Native library loading
 
-The package bundles the TurboJPEG 3.2.0 native library for every supported runtime:
+Native libraries are distributed as separate runtime packages. Each native package contains one asset:
 
 | Runtime | Asset |
 | --- | --- |
@@ -144,10 +165,9 @@ The package bundles the TurboJPEG 3.2.0 native library for every supported runti
 | `win-arm64` | `runtimes/win-arm64/native/turbojpeg.dll` |
 | `linux-x64` | `runtimes/linux-x64/native/libturbojpeg.so` |
 | `linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
-| `osx-x64` | `runtimes/osx-x64/native/libturbojpeg.dylib` |
-| `osx-arm64` | `runtimes/osx-arm64/native/libturbojpeg.dylib` |
+| `osx-x64`, `osx-arm64` | `runtimes/osx/native/libturbojpeg.dylib` |
 
-The macOS library is a universal binary (x86_64 + arm64) included in both macOS runtime folders.
+The macOS library is a universal binary (x86_64 + arm64) supplied once by the `TurboJpeg.Wrapper.Decoder.Native.osx-universal` package. The loader resolves the base `osx` runtime folder on both macOS architectures.
 
 The bundled Linux libraries are glibc builds; for musl/Alpine, supply a musl build through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
 
@@ -156,10 +176,11 @@ Set `TURBOJPEG_NATIVE_LIBRARY_PATH` to the full path of a native library file to
 Otherwise the resolver tries, in order:
 
 1. `runtimes/{rid}/native/{library}` under `AppContext.BaseDirectory`.
-2. `{library}` in `AppContext.BaseDirectory`.
-3. The operating system's normal library search.
+2. On macOS only, `runtimes/osx/native/{library}` under `AppContext.BaseDirectory`.
+3. `{library}` in `AppContext.BaseDirectory`.
+4. The operating system's normal library search.
 
-The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. x86 is not supported. To add a different runtime, place the matching library under `runtimes/{rid}/native/` and include it in the package.
+The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. x86 is not supported. To add a different runtime, place the matching library under `runtimes/{rid}/native/` and include it in a native package.
 
 ## Threading and performance
 
@@ -172,14 +193,21 @@ The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-
 
 ## Packaging
 
-Build a package with:
+Build all six packages with:
 
 ```bash
-dotnet pack src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj -c Release -o artifacts
+bash .github/scripts/pack-packages.sh
 ```
 
-The package contains the six native assets listed above, `README.md`, and `THIRD-PARTY-NOTICES.md`.
+The script writes to `artifacts/packages` and produces version `3.2.0-pre.1`, which comes from `Directory.Build.props`:
+
+- `TurboJpeg.Wrapper.Decoder.3.2.0-pre.1.nupkg`: managed assembly, `README.md`, and `THIRD-PARTY-NOTICES.md`; no native assets and no native package dependencies.
+- `TurboJpeg.Wrapper.Decoder.Native.win-x64.3.2.0-pre.1.nupkg`
+- `TurboJpeg.Wrapper.Decoder.Native.win-arm64.3.2.0-pre.1.nupkg`
+- `TurboJpeg.Wrapper.Decoder.Native.linux-x64.3.2.0-pre.1.nupkg`
+- `TurboJpeg.Wrapper.Decoder.Native.linux-arm64.3.2.0-pre.1.nupkg`
+- `TurboJpeg.Wrapper.Decoder.Native.osx-universal.3.2.0-pre.1.nupkg`
 
 ## License and notices
 
-The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md); the same file is included in the NuGet package.
+The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md); the same file is included in the managed package and in every native package.
