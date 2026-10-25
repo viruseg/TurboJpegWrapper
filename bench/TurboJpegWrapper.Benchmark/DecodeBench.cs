@@ -24,7 +24,11 @@ public class DecodeBench
     [Benchmark(Baseline = true)]
     public byte[] DecodeTurboJpeg()
     {
-        return TurboJpeg.DecodeToBmp(_jpeg);
+        return TurboJpeg.DecodeToBmp(_jpeg, TurboJpegDecodeOptions.Default with
+        {
+            AutoOrient = true,
+            BmpBitDepth = TurboJpegBmpBitDepth.Bpp24
+        });
     }
 
     [Benchmark]
