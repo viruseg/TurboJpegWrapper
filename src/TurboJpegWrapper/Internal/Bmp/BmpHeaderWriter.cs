@@ -1,4 +1,6 @@
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace TurboJpegWrapper.Internal.Bmp;
 
@@ -117,7 +119,7 @@ internal static class BmpHeaderWriter
         return template;
     }
 
-    internal static void ClearPadding(
+    internal static unsafe void ClearPadding(
         Span<byte> destination, int width, int height, TurboJpegBmpBitDepth bitDepth)
     {
         var rowBytes = checked(width * GetBytesPerPixel(bitDepth));
@@ -127,12 +129,35 @@ internal static class BmpHeaderWriter
             return;
         }
 
-        var pixelOffset = GetPixelOffset(bitDepth);
         var padding = stride - rowBytes;
-        for (var y = 0; y < height; y++)
+        var offset = checked(GetPixelOffset(bitDepth) + rowBytes);
+        ref var destinationRef = ref MemoryMarshal.GetReference(destination);
+
+        if (padding == 3)
         {
-            var rowOffset = checked(pixelOffset + y * stride + rowBytes);
-            destination.Slice(rowOffset, padding).Clear();
+            for (var y = 0; y < height; y++)
+            {
+                ref var target = ref Unsafe.Add(ref destinationRef, offset);
+                Unsafe.WriteUnaligned(ref target, (ushort)0);
+                Unsafe.Add(ref target, 2) = 0;
+                offset += stride;
+            }
+        }
+        else if (padding == 2)
+        {
+            for (var y = 0; y < height; y++)
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref destinationRef, offset), (ushort)0);
+                offset += stride;
+            }
+        }
+        else
+        {
+            for (var y = 0; y < height; y++)
+            {
+                Unsafe.Add(ref destinationRef, offset) = 0;
+                offset += stride;
+            }
         }
     }
 }
