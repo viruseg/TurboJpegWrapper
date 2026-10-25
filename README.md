@@ -201,7 +201,7 @@ bash scripts/pack-packages.sh
 
 The script writes to `artifacts/packages` and produces version `3.2.0-pre.1`, which comes from `Directory.Build.props`:
 
-- `TurboJpeg.Wrapper.Decoder.3.2.0-pre.1.nupkg`: managed assembly, `README.md`, and `THIRD-PARTY-NOTICES.md`; no native assets and no native package dependencies.
+- `TurboJpeg.Wrapper.Decoder.3.2.0-pre.1.nupkg`: managed assembly, `README.md`, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; no native assets and no native package dependencies.
 - `TurboJpeg.Wrapper.Decoder.Native.win-x64.3.2.0-pre.1.nupkg`
 - `TurboJpeg.Wrapper.Decoder.Native.win-arm64.3.2.0-pre.1.nupkg`
 - `TurboJpeg.Wrapper.Decoder.Native.linux-x64.3.2.0-pre.1.nupkg`
@@ -209,5 +209,7 @@ The script writes to `artifacts/packages` and produces version `3.2.0-pre.1`, wh
 - `TurboJpeg.Wrapper.Decoder.Native.osx-universal.3.2.0-pre.1.nupkg`
 
 ## License and notices
+
+The source code in this repository is licensed under the MIT License. See [LICENSE](LICENSE); the same file is included in every package.
 
 The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md); the same file is included in the managed package and in every native package.

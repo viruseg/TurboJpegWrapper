@@ -27,11 +27,15 @@ main="$(nupkg TurboJpeg.Wrapper.Decoder)"
 main_entries="$(entries "$main")"
 grep -qxF "lib/net10.0/TurboJpeg.Wrapper.Decoder.dll" <<<"$main_entries" || fail "managed package has no lib/net10.0/TurboJpeg.Wrapper.Decoder.dll"
 grep -qxF "README.md" <<<"$main_entries" || fail "managed package has no README.md"
+grep -qxF "LICENSE" <<<"$main_entries" || fail "managed package has no LICENSE"
 grep -qxF "THIRD-PARTY-NOTICES.md" <<<"$main_entries" || fail "managed package has no THIRD-PARTY-NOTICES.md"
 if grep -q '^runtimes/' <<<"$main_entries"; then
   fail "managed package contains runtime assets"
 fi
 main_nuspec="$(unzip -p "$main" "$(grep '\.nuspec$' <<<"$main_entries")")"
+if ! grep -q '<license type="file">LICENSE</license>' <<<"$main_nuspec"; then
+  fail "managed package has no file-based LICENSE metadata"
+fi
 if grep -q 'dependency id="TurboJpeg.Wrapper.Decoder.Native.' <<<"$main_nuspec"; then
   fail "managed package depends on a native package"
 fi
@@ -45,6 +49,7 @@ check_native() {
   local package_entries
   package_entries="$(entries "$package")"
   grep -qxF "$asset" <<<"$package_entries" || fail "$id is missing $asset"
+  grep -qxF "LICENSE" <<<"$package_entries" || fail "$id is missing LICENSE"
   grep -qxF "THIRD-PARTY-NOTICES.md" <<<"$package_entries" || fail "$id is missing THIRD-PARTY-NOTICES.md"
   if grep -q '^lib/' <<<"$package_entries"; then
     fail "$id contains managed lib assets"
@@ -54,6 +59,9 @@ check_native() {
   [[ "$runtime_count" -eq 1 ]] || fail "$id has $runtime_count runtime assets"
   local package_nuspec
   package_nuspec="$(unzip -p "$package" "$(grep '\.nuspec$' <<<"$package_entries")")"
+  if ! grep -q '<license type="file">LICENSE</license>' <<<"$package_nuspec"; then
+    fail "$id has no file-based LICENSE metadata"
+  fi
   if grep -q '<dependency ' <<<"$package_nuspec"; then
     fail "$id declares dependencies"
   fi
