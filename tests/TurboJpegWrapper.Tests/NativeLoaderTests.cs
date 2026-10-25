@@ -8,8 +8,11 @@ public sealed class NativeLoaderTests
 {
     [Theory]
     [InlineData("WINDOWS", Architecture.X64, "win-x64")]
+    [InlineData("WINDOWS", Architecture.Arm64, "win-arm64")]
     [InlineData("LINUX", Architecture.X64, "linux-x64")]
+    [InlineData("LINUX", Architecture.Arm64, "linux-arm64")]
     [InlineData("OSX", Architecture.X64, "osx-x64")]
+    [InlineData("OSX", Architecture.Arm64, "osx-arm64")]
     public void GetRuntimeIdentifier_KnownPlatforms(string os, Architecture arch, string expected)
     {
         Assert.Equal(expected, TurboJpegNativeLoader.GetRuntimeIdentifier(OSPlatform.Create(os), arch));
@@ -19,9 +22,8 @@ public sealed class NativeLoaderTests
     [InlineData("FREEBSD", Architecture.X64)]
     [InlineData("WINDOWS", Architecture.X86)]
     [InlineData("WINDOWS", Architecture.Arm)]
-    [InlineData("WINDOWS", Architecture.Arm64)]
-    [InlineData("LINUX", Architecture.Arm64)]
-    [InlineData("OSX", Architecture.Arm64)]
+    [InlineData("LINUX", Architecture.X86)]
+    [InlineData("OSX", Architecture.X86)]
     public void GetRuntimeIdentifier_Unsupported_ReturnsNull(string os, Architecture arch)
     {
         Assert.Null(TurboJpegNativeLoader.GetRuntimeIdentifier(OSPlatform.Create(os), arch));

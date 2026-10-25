@@ -135,7 +135,7 @@ Otherwise the resolver tries, in order:
 2. `{library}` in `AppContext.BaseDirectory`.
 3. The operating system's normal library search.
 
-The resolver knows these x64 runtime identifiers: `win-x64`, `linux-x64`, and `osx-x64`. Only `win-x64` is bundled today. To add another platform, place the matching library under `runtimes/{rid}/native/` and include it in the package. x86 and ARM64 are not supported.
+The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. Only `win-x64` is bundled today. To add another platform, place the matching library under `runtimes/{rid}/native/` and include it in the package. x86 is not supported.
 
 ## Threading and performance
 
