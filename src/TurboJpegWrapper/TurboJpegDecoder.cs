@@ -101,11 +101,99 @@ public sealed class TurboJpegDecoder : IDisposable
     /// The decoded image would exceed the configured pixel limit or the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
-    public unsafe byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
+    public byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
+        var plan = CreatePlan(jpeg, options);
+        var bmp = GC.AllocateUninitializedArray<byte>(plan.TotalSize);
+        DecodeWithPlan(jpeg, options, in plan, bmp);
+        return bmp;
+    }
+
+    /// <summary>Decodes a JPEG image into a caller-provided BMP buffer using the specified options.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <param name="options">The decoding options.</param>
+    /// <param name="destination">The destination buffer for the complete BMP file.</param>
+    /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+    /// <remarks>
+    /// The required buffer size can be obtained with <see cref="GetBmpSize(ReadOnlySpan{byte}, TurboJpegDecodeOptions)"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported, or
+    /// <paramref name="destination"/> is too small.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
+    public int DecodeToBmp(
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        Span<byte> destination)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ThrowIfDisposed();
+
+        var plan = CreatePlan(jpeg, options);
+        if (destination.Length < plan.TotalSize)
+        {
+            throw new ArgumentException(
+                $"The destination must be at least {plan.TotalSize} bytes long.", nameof(destination));
+        }
+
+        DecodeWithPlan(jpeg, options, in plan, destination[..plan.TotalSize]);
+        return plan.TotalSize;
+    }
+
+    /// <summary>Gets the size of the BMP that <see cref="DecodeToBmp(ReadOnlySpan{byte})"/> would produce using the default options.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <returns>The required BMP file size in bytes.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty or the default scaling factor is not supported.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not parse the JPEG header.</exception>
+    public int GetBmpSize(ReadOnlySpan<byte> jpeg) => GetBmpSize(jpeg, _defaultOptions);
+
+    /// <summary>Gets the size of the BMP that <see cref="DecodeToBmp(ReadOnlySpan{byte}, TurboJpegDecodeOptions)"/> would produce.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <param name="options">The decoding options.</param>
+    /// <returns>The required BMP file size in bytes.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty or the requested scaling factor is not supported.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not parse the JPEG header.</exception>
+    public int GetBmpSize(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ThrowIfDisposed();
+
+        return CreatePlan(jpeg, options).TotalSize;
+    }
+
+    private DecodePlan CreatePlan(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
+    {
         if (jpeg.IsEmpty)
         {
             throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
@@ -148,7 +236,85 @@ public sealed class TurboJpegDecoder : IDisposable
                 $"which exceeds the maximum array length of {Array.MaxLength} bytes.");
         }
 
+        var pixelFormat = bitDepth switch
+        {
+            TurboJpegBmpBitDepth.Bpp8 => TurboJpegNative.PixelFormatGray,
+            TurboJpegBmpBitDepth.Bpp24 => TurboJpegNative.PixelFormatBgr,
+            TurboJpegBmpBitDepth.Bpp32 => TurboJpegNative.PixelFormatBgra,
+            _ => throw new ArgumentOutOfRangeException(nameof(options), bitDepth, null)
+        };
+
+        return new DecodePlan(
+            width,
+            height,
+            outputWidth,
+            outputHeight,
+            bitDepth,
+            orientation,
+            pixelFormat,
+            BmpHeaderWriter.GetPixelOffset(bitDepth),
+            BmpHeaderWriter.GetBytesPerPixel(bitDepth),
+            BmpHeaderWriter.GetRowStride(outputWidth, bitDepth),
+            (int)total,
+            swapsAxes);
+    }
+
+    private unsafe void DecodeWithPlan(
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
         var handle = _handle!;
+        ApplyParameters(handle, options, plan.Orientation);
+
+        BmpHeaderWriter.Write(bmp, plan.OutputWidth, plan.OutputHeight, plan.BitDepth);
+        BmpHeaderWriter.ClearPadding(bmp, plan.OutputWidth, plan.OutputHeight, plan.BitDepth);
+
+        if (!plan.SwapsAxes)
+        {
+            DecompressInto(handle, jpeg, bmp[plan.PixelOffset..], plan.OutputStride, plan.PixelFormat);
+
+            if (plan.Orientation is ExifOrientation.FlipHorizontal or ExifOrientation.Rotate180)
+            {
+                BmpOrientationWriter.MirrorRowsInPlace(
+                    bmp[plan.PixelOffset..],
+                    plan.Width,
+                    plan.Height,
+                    plan.OutputStride,
+                    plan.BytesPerPixel);
+            }
+
+            return;
+        }
+
+        var sourcePitch = checked(plan.Width * plan.BytesPerPixel);
+        var sourceByteCount = checked(sourcePitch * plan.Height);
+        var scratch = ArrayPool<byte>.Shared.Rent(sourceByteCount);
+
+        try
+        {
+            var sourcePixels = scratch.AsSpan(0, sourceByteCount);
+            DecompressInto(handle, jpeg, sourcePixels, sourcePitch, plan.PixelFormat);
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                sourcePixels,
+                plan.Width,
+                plan.Height,
+                plan.BytesPerPixel,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(scratch);
+        }
+    }
+
+    private void ApplyParameters(
+        SafeTurboJpegHandle handle, TurboJpegDecodeOptions options, ExifOrientation orientation)
+    {
         var bottomUp = orientation is ExifOrientation.Normal or ExifOrientation.FlipHorizontal
             ? 1
             : 0;
@@ -162,64 +328,62 @@ public sealed class TurboJpegDecoder : IDisposable
             TurboJpegNative.ParamFastUpsample,
             options.FastUpsampling ? 1 : 0,
             ref _appliedFastUpsample);
-        ApplyScalingFactor(handle, factor);
+        ApplyScalingFactor(handle, options.ScalingFactor);
+    }
 
-        var bmp = GC.AllocateUninitializedArray<byte>((int)total);
-        BmpHeaderWriter.Write(bmp, outputWidth, outputHeight, bitDepth);
-        BmpHeaderWriter.ClearPadding(bmp, outputWidth, outputHeight, bitDepth);
-
-        var pixelFormat = bitDepth switch
+    private readonly struct DecodePlan
+    {
+        internal DecodePlan(
+            int width,
+            int height,
+            int outputWidth,
+            int outputHeight,
+            TurboJpegBmpBitDepth bitDepth,
+            ExifOrientation orientation,
+            int pixelFormat,
+            int pixelOffset,
+            int bytesPerPixel,
+            int outputStride,
+            int totalSize,
+            bool swapsAxes)
         {
-            TurboJpegBmpBitDepth.Bpp8 => TurboJpegNative.PixelFormatGray,
-            TurboJpegBmpBitDepth.Bpp24 => TurboJpegNative.PixelFormatBgr,
-            TurboJpegBmpBitDepth.Bpp32 => TurboJpegNative.PixelFormatBgra,
-            _ => throw new ArgumentOutOfRangeException(nameof(options), bitDepth, null)
-        };
-
-        var pixelOffset = BmpHeaderWriter.GetPixelOffset(bitDepth);
-        var bytesPerPixel = BmpHeaderWriter.GetBytesPerPixel(bitDepth);
-        var outputStride = BmpHeaderWriter.GetRowStride(outputWidth, bitDepth);
-
-        if (orientation is ExifOrientation.Normal
-            or ExifOrientation.FlipHorizontal
-            or ExifOrientation.Rotate180
-            or ExifOrientation.FlipVertical)
-        {
-            DecompressInto(handle, jpeg, bmp.AsSpan(pixelOffset), outputStride, pixelFormat);
-
-            if (orientation is ExifOrientation.FlipHorizontal or ExifOrientation.Rotate180)
-            {
-                BmpOrientationWriter.MirrorRowsInPlace(
-                    bmp.AsSpan(pixelOffset), width, height, outputStride, bytesPerPixel);
-            }
-
-            return bmp;
+            Width = width;
+            Height = height;
+            OutputWidth = outputWidth;
+            OutputHeight = outputHeight;
+            BitDepth = bitDepth;
+            Orientation = orientation;
+            PixelFormat = pixelFormat;
+            PixelOffset = pixelOffset;
+            BytesPerPixel = bytesPerPixel;
+            OutputStride = outputStride;
+            TotalSize = totalSize;
+            SwapsAxes = swapsAxes;
         }
 
-        var sourcePitch = checked(width * bytesPerPixel);
-        var sourceByteCount = checked(sourcePitch * height);
-        var scratch = ArrayPool<byte>.Shared.Rent(sourceByteCount);
+        internal int Width { get; }
 
-        try
-        {
-            var sourcePixels = scratch.AsSpan(0, sourceByteCount);
-            DecompressInto(handle, jpeg, sourcePixels, sourcePitch, pixelFormat);
+        internal int Height { get; }
 
-            BmpOrientationWriter.Write(
-                bmp.AsSpan(pixelOffset),
-                sourcePixels,
-                width,
-                height,
-                bytesPerPixel,
-                outputStride,
-                orientation);
+        internal int OutputWidth { get; }
 
-            return bmp;
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(scratch);
-        }
+        internal int OutputHeight { get; }
+
+        internal TurboJpegBmpBitDepth BitDepth { get; }
+
+        internal ExifOrientation Orientation { get; }
+
+        internal int PixelFormat { get; }
+
+        internal int PixelOffset { get; }
+
+        internal int BytesPerPixel { get; }
+
+        internal int OutputStride { get; }
+
+        internal int TotalSize { get; }
+
+        internal bool SwapsAxes { get; }
     }
 
     private static unsafe void DecompressInto(

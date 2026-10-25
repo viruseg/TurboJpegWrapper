@@ -47,7 +47,13 @@ byte[] scaled = TurboJpeg.DecodeToBmp(
 
 TurboJpegImageInfo info = TurboJpeg.GetImageInfo(jpeg);
 ReadOnlySpan<TurboJpegScalingFactor> factors = TurboJpeg.GetSupportedScalingFactors();
+
+int size = TurboJpeg.GetBmpSize(jpeg);
+byte[] buffer = new byte[size];
+int written = TurboJpeg.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer);
 ```
+
+`GetBmpSize` performs the same header, EXIF, scaling, and limit validation as decoding, so the destination buffer can be sized exactly. The span overloads return the number of bytes written and avoid allocating a new BMP array per call; pool and reuse the buffer when decoding many images.
 
 ### Instance decoder
 
@@ -59,9 +65,13 @@ using TurboJpegWrapper;
 using var decoder = new TurboJpegDecoder();
 byte[] bmp = decoder.DecodeToBmp(jpeg);
 TurboJpegImageInfo info = decoder.GetImageInfo(jpeg);
+
+int size = decoder.GetBmpSize(jpeg);
+byte[] buffer = new byte[size];
+int written = decoder.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer);
 ```
 
-Both `DecodeToBmp` overloads and `GetImageInfo` throw `ObjectDisposedException` after the decoder is disposed.
+All decode and size methods throw `ObjectDisposedException` after the decoder is disposed.
 
 If a JPEG header parse fails, the decoder recreates its native handle. If recreation fails,
 the decoder becomes disposed and the original exception is rethrown.
@@ -115,7 +125,7 @@ With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segme
 
 ## Errors
 
-- `ArgumentException`: empty input, invalid options, or an unsupported scaling factor.
+- `ArgumentException`: empty input, invalid options, an unsupported scaling factor, or a destination buffer that is too small.
 - `ArgumentNullException`: a null options object passed to the static or instance options overload.
 - `TurboJpegUnsupportedException`: precision or color space cannot be converted to BMP.
 - `TurboJpegImageTooLargeException`: `MaxPixels` is exceeded or the BMP would exceed `Array.MaxLength`.

@@ -77,6 +77,98 @@ public static class TurboJpeg
         }
     }
 
+    /// <summary>Decodes a JPEG image into a caller-provided BMP buffer using the specified options.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <param name="options">The decoding options.</param>
+    /// <param name="destination">The destination buffer for the complete BMP file.</param>
+    /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported, or
+    /// <paramref name="destination"/> is too small.
+    /// </exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not load or decode the JPEG.</exception>
+    public static int DecodeToBmp(
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        Span<byte> destination)
+    {
+        TurboJpegDecoder? decoder = null;
+        try
+        {
+            decoder = TurboJpegDecoderPool.Shared.Rent();
+            return decoder.DecodeToBmp(jpeg, options, destination);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
+        {
+            throw TurboJpegNative.CreateLoadException(ex);
+        }
+        finally
+        {
+            if (decoder is not null)
+            {
+                TurboJpegDecoderPool.Shared.Return(decoder);
+            }
+        }
+    }
+
+    /// <summary>Gets the size of the BMP produced by <see cref="DecodeToBmp(ReadOnlySpan{byte})"/> using default options.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <returns>The required BMP file size in bytes.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty or the default scaling factor is not supported.
+    /// </exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not load or parse the JPEG header.</exception>
+    public static int GetBmpSize(ReadOnlySpan<byte> jpeg) => GetBmpSize(jpeg, TurboJpegDecodeOptions.Default);
+
+    /// <summary>Gets the size of the BMP produced by <see cref="DecodeToBmp(ReadOnlySpan{byte}, TurboJpegDecodeOptions)"/>.</summary>
+    /// <param name="jpeg">The complete JPEG file contents.</param>
+    /// <param name="options">The decoding options.</param>
+    /// <returns>The required BMP file size in bytes.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="jpeg"/> is empty or the requested scaling factor is not supported.
+    /// </exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not load or parse the JPEG header.</exception>
+    public static int GetBmpSize(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
+    {
+        TurboJpegDecoder? decoder = null;
+        try
+        {
+            decoder = TurboJpegDecoderPool.Shared.Rent();
+            return decoder.GetBmpSize(jpeg, options);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
+        {
+            throw TurboJpegNative.CreateLoadException(ex);
+        }
+        finally
+        {
+            if (decoder is not null)
+            {
+                TurboJpegDecoderPool.Shared.Return(decoder);
+            }
+        }
+    }
+
     /// <summary>Reads the dimensions and encoding format of a JPEG image without decoding its pixels.</summary>
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <returns>Information about the JPEG image.</returns>
