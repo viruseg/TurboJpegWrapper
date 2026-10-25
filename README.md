@@ -7,7 +7,7 @@ The library is decode-only. It does not encode JPEGs or expose YUV buffers. Turb
 ## Requirements
 
 - .NET 10.
-- A TurboJPEG 3.2+ native library. The package bundles the Windows x64 binary (`turbojpeg.dll` 3.2.0); Linux and macOS on x64 or ARM64 are supported when the matching native library is supplied.
+- A TurboJPEG 3.2+ native library. The package bundles libjpeg-turbo 3.2.0 for Windows x64/ARM64, Linux x64/ARM64, and macOS x64/ARM64. Linux binaries require glibc 2.17+ and do not support musl/Alpine; macOS requires 10.7+ on x64 and 11+ on ARM64.
 - x86 is not supported.
 
 ## Quick start
@@ -136,7 +136,20 @@ With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segme
 
 ## Native library loading
 
-The package bundles `runtimes/win-x64/native/turbojpeg.dll`.
+The package bundles the TurboJPEG 3.2.0 native library for every supported runtime:
+
+| Runtime | Asset |
+| --- | --- |
+| `win-x64` | `runtimes/win-x64/native/turbojpeg.dll` |
+| `win-arm64` | `runtimes/win-arm64/native/turbojpeg.dll` |
+| `linux-x64` | `runtimes/linux-x64/native/libturbojpeg.so` |
+| `linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
+| `osx-x64` | `runtimes/osx-x64/native/libturbojpeg.dylib` |
+| `osx-arm64` | `runtimes/osx-arm64/native/libturbojpeg.dylib` |
+
+The macOS library is a universal binary (x86_64 + arm64) included in both macOS runtime folders.
+
+The bundled Linux libraries are glibc builds; for musl/Alpine, supply a musl build through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
 
 Set `TURBOJPEG_NATIVE_LIBRARY_PATH` to the full path of a native library file to override discovery. When the variable is set to a non-blank value, it is the only location used; an invalid path fails immediately instead of falling back.
 
@@ -146,7 +159,8 @@ Otherwise the resolver tries, in order:
 2. `{library}` in `AppContext.BaseDirectory`.
 3. The operating system's normal library search.
 
-The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. Only `win-x64` is bundled today. To add another platform, place the matching library under `runtimes/{rid}/native/` and include it in the package. x86 is not supported.
+The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. x86 is not supported. To add a different runtime, place the matching library under `runtimes/{rid}/native/` and include it in the package.
+
 ## Threading and performance
 
 - `TurboJpeg` is safe for concurrent use; each operation rents an exclusive decoder and returns it afterward.
@@ -164,8 +178,8 @@ Build a package with:
 dotnet pack src/TurboJpegWrapper/TurboJpegWrapper.csproj -c Release -o artifacts
 ```
 
-The package contains `runtimes/win-x64/native/turbojpeg.dll` and `THIRD-PARTY-NOTICES.md`.
+The package contains the six native assets listed above, `README.md`, and `THIRD-PARTY-NOTICES.md`.
 
 ## License and notices
 
-The bundled native library is libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md); the same file is included in the NuGet package.
+The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md); the same file is included in the NuGet package.
