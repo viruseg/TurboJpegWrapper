@@ -12,8 +12,10 @@ public sealed class DecodeOptionsTests
         int num, int den, int expectedWidth, int expectedHeight)
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(num, den));
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(num, den)
+        };
 
         var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options);
 
@@ -25,8 +27,10 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_HalfScale_WritesExactSizeAndContent()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(1, 2));
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(1, 2)
+        };
 
         var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options);
 
@@ -43,8 +47,10 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_UnsupportedFactor_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(13, 17));
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(13, 17)
+        };
 
         Assert.Throws<ArgumentException>(
             () => decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options));
@@ -54,8 +60,10 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_LosslessWithScaling_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(1, 2));
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(1, 2)
+        };
 
         Assert.Throws<ArgumentException>(
             () => decoder.DecodeToBmp(TestFixtures.Load("lossless.jpg"), options));
@@ -65,7 +73,7 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_MaxPixelsExceeded_ThrowsImageTooLarge()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(maxPixels: 100);
+        var options = new TurboJpegDecodeOptions { MaxPixels = 100 };
 
         Assert.Throws<TurboJpegImageTooLargeException>(
             () => decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options));
@@ -75,7 +83,7 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_ScanLimitExceeded_ThrowsTurboJpegException()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(scanLimit: 1);
+        var options = new TurboJpegDecodeOptions { ScanLimit = 1 };
 
         Assert.Throws<TurboJpegException>(
             () => decoder.DecodeToBmp(TestFixtures.Load("progressive.jpg"), options));
@@ -91,7 +99,7 @@ public sealed class DecodeOptionsTests
         var exception = Assert.Throws<TurboJpegException>(
             () => decoder.DecodeToBmp(
                 jpeg,
-                new TurboJpegDecodeOptions(maxMemoryMegabytes: 1)));
+                new TurboJpegDecodeOptions { MaxMemoryMegabytes = 1 }));
 
         Assert.Contains("memory limit", exception.Message, StringComparison.OrdinalIgnoreCase);
 
@@ -106,7 +114,7 @@ public sealed class DecodeOptionsTests
 
         Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(
             TestFixtures.Load("progressive.jpg"),
-            new TurboJpegDecodeOptions(scanLimit: 1)));
+            new TurboJpegDecodeOptions { ScanLimit = 1 }));
 
         var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"));
 
@@ -118,7 +126,11 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_FastFlags_StillProduceValidBmp()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(fastDct: true, fastUpsampling: true);
+        var options = new TurboJpegDecodeOptions
+        {
+            FastDct = true,
+            FastUpsampling = true
+        };
 
         var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-420.jpg"), options);
 
@@ -133,8 +145,10 @@ public sealed class DecodeOptionsTests
         var jpeg = TestFixtures.Load("baseline-444.jpg");
 
         var full = decoder.DecodeToBmp(jpeg);
-        var half = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(1, 2)));
+        var half = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(1, 2)
+        });
         var fullAgain = decoder.DecodeToBmp(jpeg);
 
         Assert.Equal(35, BmpTestHelpers.Width(full));
@@ -142,7 +156,7 @@ public sealed class DecodeOptionsTests
         Assert.Equal(35, BmpTestHelpers.Width(fullAgain));
 
         Assert.Throws<TurboJpegImageTooLargeException>(() => decoder.DecodeToBmp(
-            jpeg, new TurboJpegDecodeOptions(maxPixels: 100)));
+            jpeg, new TurboJpegDecodeOptions { MaxPixels = 100 }));
         Assert.Equal(35, BmpTestHelpers.Width(decoder.DecodeToBmp(jpeg)));
     }
 
@@ -152,7 +166,7 @@ public sealed class DecodeOptionsTests
         using var decoder = new TurboJpegDecoder();
         var jpeg = TestFixtures.Load("baseline-444.jpg");
         JpegPatcher.SetDimensions(jpeg, 65500, 65500);
-        var options = new TurboJpegDecodeOptions(maxPixels: 0);
+        var options = new TurboJpegDecodeOptions { MaxPixels = 0 };
 
         var exception = Assert.Throws<TurboJpegImageTooLargeException>(
             () => decoder.DecodeToBmp(jpeg, options));
@@ -172,7 +186,7 @@ public sealed class DecodeOptionsTests
     public void DecodeToBmp_ConstructorDefaultOptions_AreUsed()
     {
         using var decoder = new TurboJpegDecoder(
-            new TurboJpegDecodeOptions(scalingFactor: new TurboJpegScalingFactor(1, 2)));
+            new TurboJpegDecodeOptions { ScalingFactor = new TurboJpegScalingFactor(1, 2) });
 
         var bmp = decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"));
 
@@ -184,33 +198,36 @@ public sealed class DecodeOptionsTests
     [InlineData(-1, 0, 0)]
     [InlineData(0, -1, 0)]
     [InlineData(0, 0, -1)]
-    public void Constructor_NegativeLimit_ThrowsArgumentOutOfRangeException(
+    public void Options_NegativeLimit_ThrowsArgumentOutOfRangeException(
         int maxPixels, int maxMemoryMegabytes, int scanLimit)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new TurboJpegDecodeOptions(
-            maxPixels: maxPixels,
-            maxMemoryMegabytes: maxMemoryMegabytes,
-            scanLimit: scanLimit));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TurboJpegDecodeOptions
+            {
+                MaxPixels = maxPixels,
+                MaxMemoryMegabytes = maxMemoryMegabytes,
+                ScanLimit = scanLimit
+            });
     }
 
     [Fact]
-    public void Constructor_DefaultScalingFactor_ThrowsArgumentOutOfRangeException()
+    public void Options_DefaultScalingFactor_ThrowsArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new TurboJpegDecodeOptions(scalingFactor: default(TurboJpegScalingFactor)));
+            () => new TurboJpegDecodeOptions { ScalingFactor = default(TurboJpegScalingFactor) });
     }
 
     [Fact]
-    public void Constructor_BmpBitDepth_DefaultsTo32()
+    public void Options_BmpBitDepth_DefaultsTo32()
     {
         Assert.Equal(TurboJpegBmpBitDepth.Bpp32, new TurboJpegDecodeOptions().BmpBitDepth);
         Assert.Equal(TurboJpegBmpBitDepth.Bpp32, TurboJpegDecodeOptions.Default.BmpBitDepth);
     }
 
     [Fact]
-    public void Constructor_UndefinedBmpBitDepth_ThrowsArgumentOutOfRangeException()
+    public void Options_UndefinedBmpBitDepth_ThrowsArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new TurboJpegDecodeOptions(bmpBitDepth: (TurboJpegBmpBitDepth)12));
+            () => new TurboJpegDecodeOptions { BmpBitDepth = (TurboJpegBmpBitDepth)12 });
     }
 }

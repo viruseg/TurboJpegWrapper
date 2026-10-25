@@ -29,8 +29,10 @@ public sealed class ScalingFactorTests
 
         var bmp = decoder.DecodeToBmp(
             jpeg,
-            new TurboJpegDecodeOptions(
-                scalingFactor: new TurboJpegScalingFactor(numerator, denominator)));
+            new TurboJpegDecodeOptions
+            {
+                ScalingFactor = new TurboJpegScalingFactor(numerator, denominator)
+            });
 
         Assert.Equal(
             (TestFixtures.Width * numerator + denominator - 1) / denominator,

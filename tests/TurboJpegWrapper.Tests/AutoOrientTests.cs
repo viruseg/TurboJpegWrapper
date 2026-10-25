@@ -33,7 +33,7 @@ public sealed class AutoOrientTests
     }
 
     [Fact]
-    public void Constructor_AutoOrient_DefaultsToFalse()
+    public void Options_AutoOrient_DefaultsToFalse()
     {
         Assert.False(new TurboJpegDecodeOptions().AutoOrient);
         Assert.False(TurboJpegDecodeOptions.Default.AutoOrient);
@@ -56,7 +56,7 @@ public sealed class AutoOrientTests
 
         using var decoder = new TurboJpegDecoder();
         var plain = decoder.DecodeToBmp(jpeg);
-        var autoOrient = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions(autoOrient: true));
+        var autoOrient = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions { AutoOrient = true });
 
         Assert.Equal(plain, autoOrient);
     }
@@ -70,7 +70,7 @@ public sealed class AutoOrientTests
         using var decoder = new TurboJpegDecoder();
         var plain = decoder.DecodeToBmp(jpeg);
         var autoOrient = decoder.DecodeToBmp(
-            oriented, new TurboJpegDecodeOptions(autoOrient: true));
+            oriented, new TurboJpegDecodeOptions { AutoOrient = true });
 
         Assert.Equal(plain, autoOrient);
     }
@@ -85,7 +85,7 @@ public sealed class AutoOrientTests
 
         using var decoder = new TurboJpegDecoder();
         var plain = decoder.DecodeToBmp(jpeg);
-        var autoOrient = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions(autoOrient: true));
+        var autoOrient = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions { AutoOrient = true });
 
         Assert.Equal(plain, autoOrient);
     }
@@ -104,7 +104,7 @@ public sealed class AutoOrientTests
         using var decoder = new TurboJpegDecoder();
         var bmp = decoder.DecodeToBmp(
             AsymmetricFixture(orientation),
-            new TurboJpegDecodeOptions(autoOrient: true));
+            new TurboJpegDecodeOptions { AutoOrient = true });
 
         AssertLayout(bmp, expectedWidth, expectedHeight, 32);
         AssertOrientation(bmp, expectedWidth, expectedHeight, topLeft, topRight, bottomLeft, bottomRight);
@@ -119,7 +119,7 @@ public sealed class AutoOrientTests
         var jpeg = JpegPatcher.WithExifOrientation(TestFixtures.Load(fixture), 6);
 
         using var decoder = new TurboJpegDecoder();
-        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions(autoOrient: true));
+        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions { AutoOrient = true });
 
         AssertLayout(bmp, TestFixtures.Height, TestFixtures.Width, 32);
     }
@@ -131,10 +131,12 @@ public sealed class AutoOrientTests
     public void DecodeToBmp_AutoOrientWithHalfScale_WritesExpectedLayout(
         TurboJpegBmpBitDepth bitDepth)
     {
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(1, 2),
-            bmpBitDepth: bitDepth,
-            autoOrient: true);
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(1, 2),
+            BmpBitDepth = bitDepth,
+            AutoOrient = true
+        };
 
         using var decoder = new TurboJpegDecoder();
         var bmp = decoder.DecodeToBmp(OrientedFixture(6), options);
@@ -159,9 +161,11 @@ public sealed class AutoOrientTests
         int bottomLeft,
         int bottomRight)
     {
-        var options = new TurboJpegDecodeOptions(
-            bmpBitDepth: TurboJpegBmpBitDepth.Bpp24,
-            autoOrient: true);
+        var options = new TurboJpegDecodeOptions
+        {
+            BmpBitDepth = TurboJpegBmpBitDepth.Bpp24,
+            AutoOrient = true
+        };
 
         using var decoder = new TurboJpegDecoder();
         var bmp = decoder.DecodeToBmp(AsymmetricFixture(orientation), options);
@@ -180,9 +184,11 @@ public sealed class AutoOrientTests
         var jpeg = JpegPatcher.WithExifOrientation(TestFixtures.Load("grayscale.jpg"), orientation);
 
         using var decoder = new TurboJpegDecoder();
-        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions(
-            bmpBitDepth: TurboJpegBmpBitDepth.Bpp8,
-            autoOrient: true));
+        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions
+        {
+            BmpBitDepth = TurboJpegBmpBitDepth.Bpp8,
+            AutoOrient = true
+        });
 
         AssertLayout(bmp, TestFixtures.Width, TestFixtures.Height, 8);
         AssertPaddingZero(bmp);
@@ -194,9 +200,11 @@ public sealed class AutoOrientTests
         using var decoder = new TurboJpegDecoder();
         var bmp = decoder.DecodeToBmp(
             AsymmetricFixture(6),
-            new TurboJpegDecodeOptions(
-                bmpBitDepth: TurboJpegBmpBitDepth.Bpp24,
-                autoOrient: true));
+            new TurboJpegDecodeOptions
+            {
+                BmpBitDepth = TurboJpegBmpBitDepth.Bpp24,
+                AutoOrient = true
+            });
 
         AssertLayout(bmp, TestFixtures.Height, TestFixtures.Width, 24);
         AssertOrientation(
@@ -216,9 +224,11 @@ public sealed class AutoOrientTests
         var jpeg = JpegPatcher.WithExifOrientation(TestFixtures.Load("grayscale.jpg"), 6);
 
         using var decoder = new TurboJpegDecoder();
-        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions(
-            bmpBitDepth: TurboJpegBmpBitDepth.Bpp8,
-            autoOrient: true));
+        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions
+        {
+            BmpBitDepth = TurboJpegBmpBitDepth.Bpp8,
+            AutoOrient = true
+        });
 
         AssertLayout(bmp, TestFixtures.Height, TestFixtures.Width, 8);
         AssertPaddingZero(bmp);
@@ -236,7 +246,7 @@ public sealed class AutoOrientTests
         var jpeg = AsymmetricJpeg.Value;
 
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(autoOrient: true);
+        var options = new TurboJpegDecodeOptions { AutoOrient = true };
 
         var flipHorizontal = decoder.DecodeToBmp(
             JpegPatcher.WithExifOrientation(jpeg, 2), options);
@@ -297,7 +307,7 @@ public sealed class AutoOrientTests
     public void DecodeToBmp_StaticWithAutoOrient_Works()
     {
         var bmp = TurboJpeg.DecodeToBmp(
-            AsymmetricFixture(6), new TurboJpegDecodeOptions(autoOrient: true));
+            AsymmetricFixture(6), new TurboJpegDecodeOptions { AutoOrient = true });
 
         AssertOrientation(
             bmp,

@@ -21,12 +21,12 @@ File.WriteAllBytes("photo.bmp", bmp);
 
 byte[] bmp24 = TurboJpeg.DecodeToBmp(
     jpeg,
-    new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
+    new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 });
 File.WriteAllBytes("photo-24.bmp", bmp24);
 
 byte[] upright = TurboJpeg.DecodeToBmp(
     jpeg,
-    new TurboJpegDecodeOptions(autoOrient: true));
+    new TurboJpegDecodeOptions { AutoOrient = true });
 File.WriteAllBytes("photo-upright.bmp", upright);
 ```
 
@@ -42,8 +42,7 @@ The result is a complete BMP file, not raw pixels.
 byte[] bmp = TurboJpeg.DecodeToBmp(jpeg);
 byte[] scaled = TurboJpeg.DecodeToBmp(
     jpeg,
-    new TurboJpegDecodeOptions(
-        scalingFactor: new TurboJpegScalingFactor(1, 2)));
+    new TurboJpegDecodeOptions { ScalingFactor = new TurboJpegScalingFactor(1, 2) });
 
 TurboJpegImageInfo info = TurboJpeg.GetImageInfo(jpeg);
 ReadOnlySpan<TurboJpegScalingFactor> factors = TurboJpeg.GetSupportedScalingFactors();
@@ -78,7 +77,8 @@ the decoder becomes disposed and the original exception is rethrown.
 
 ### Options
 
-`TurboJpegDecodeOptions` is immutable. All limits are disabled by `0`.
+`TurboJpegDecodeOptions` is an immutable record; use `with` to derive modified options, for example
+`TurboJpegDecodeOptions.Default with { AutoOrient = true }`. All limits are disabled by `0`.
 
 | Option | Default | Meaning |
 | --- | --- | --- |

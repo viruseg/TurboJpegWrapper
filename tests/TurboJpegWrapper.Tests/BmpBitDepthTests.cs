@@ -103,7 +103,7 @@ public sealed class BmpBitDepthTests
         using var decoder = new TurboJpegDecoder();
         return decoder.DecodeToBmp(
             TestFixtures.Load(fixture),
-            new TurboJpegDecodeOptions(bmpBitDepth: bitDepth));
+            new TurboJpegDecodeOptions { BmpBitDepth = bitDepth });
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed class BmpBitDepthTests
         var jpeg = TestFixtures.Load("baseline-420.jpg");
         var bmp32 = decoder.DecodeToBmp(jpeg);
         var bmp24 = decoder.DecodeToBmp(
-            jpeg, new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
+            jpeg, new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 });
 
         for (var y = 0; y < FixtureHeight; y++)
         {
@@ -240,9 +240,9 @@ public sealed class BmpBitDepthTests
 
         var bmp32 = decoder.DecodeToBmp(jpeg);
         var bmp24 = decoder.DecodeToBmp(
-            jpeg, new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
+            jpeg, new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 });
         var bmp8 = decoder.DecodeToBmp(
-            jpeg, new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp8));
+            jpeg, new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp8 });
         var bmp32Again = decoder.DecodeToBmp(jpeg);
 
         Assert.Equal(32, BmpTestHelpers.BitsPerPixel(bmp32));
@@ -262,9 +262,11 @@ public sealed class BmpBitDepthTests
         var exception = Assert.Throws<TurboJpegImageTooLargeException>(
             () => decoder.DecodeToBmp(
                 jpeg,
-                new TurboJpegDecodeOptions(
-                    maxPixels: 0,
-                    bmpBitDepth: TurboJpegBmpBitDepth.Bpp24)));
+                new TurboJpegDecodeOptions
+                {
+                    MaxPixels = 0,
+                    BmpBitDepth = TurboJpegBmpBitDepth.Bpp24
+                }));
 
         Assert.Contains(
             "maximum array length", exception.Message, StringComparison.OrdinalIgnoreCase);

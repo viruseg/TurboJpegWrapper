@@ -158,14 +158,14 @@ public sealed class DecodeToBmpTests
 
         var scaled = decoder.DecodeToBmp(
             jpeg,
-            new TurboJpegDecodeOptions(scalingFactor: new TurboJpegScalingFactor(1, 2)));
+            new TurboJpegDecodeOptions { ScalingFactor = new TurboJpegScalingFactor(1, 2) });
         Assert.Equal(18, BmpTestHelpers.Width(scaled));
 
         Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(jpeg.AsSpan(0, jpeg.Length / 2)));
 
         var halfAgain = decoder.DecodeToBmp(
             jpeg,
-            new TurboJpegDecodeOptions(scalingFactor: new TurboJpegScalingFactor(1, 2)));
+            new TurboJpegDecodeOptions { ScalingFactor = new TurboJpegScalingFactor(1, 2) });
         Assert.Equal(18, BmpTestHelpers.Width(halfAgain));
         Assert.Equal(12, BmpTestHelpers.Height(halfAgain));
 

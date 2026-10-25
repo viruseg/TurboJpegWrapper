@@ -59,7 +59,7 @@ public sealed class SpanDecodeTests
     {
         using var decoder = new TurboJpegDecoder();
         var jpeg = LoadJpeg(6);
-        var options = new TurboJpegDecodeOptions(autoOrient: true);
+        var options = new TurboJpegDecodeOptions { AutoOrient = true };
         var size = decoder.GetBmpSize(jpeg, options);
         var destination = new byte[size - 1];
         Array.Fill(destination, (byte)0xEE);
@@ -72,9 +72,11 @@ public sealed class SpanDecodeTests
     public void StaticApi_GetBmpSizeAndSpanDecode_Match()
     {
         var jpeg = TestFixtures.Load("baseline-444.jpg");
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(3, 2),
-            bmpBitDepth: TurboJpegBmpBitDepth.Bpp24);
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(3, 2),
+            BmpBitDepth = TurboJpegBmpBitDepth.Bpp24
+        };
         var size = TurboJpeg.GetBmpSize(jpeg, options);
         var destination = new byte[size];
 
@@ -119,8 +121,10 @@ public sealed class SpanDecodeTests
     public void GetBmpSize_LosslessWithScaling_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(1, 2));
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(1, 2)
+        };
 
         Assert.Throws<ArgumentException>(
             () => decoder.GetBmpSize(TestFixtures.Load("lossless.jpg"), options));
@@ -147,8 +151,10 @@ public sealed class SpanDecodeTests
         bool autoOrient,
         int numerator,
         int denominator) =>
-        new(
-            scalingFactor: new TurboJpegScalingFactor(numerator, denominator),
-            bmpBitDepth: bitDepth,
-            autoOrient: autoOrient);
+        new()
+        {
+            ScalingFactor = new TurboJpegScalingFactor(numerator, denominator),
+            BmpBitDepth = bitDepth,
+            AutoOrient = autoOrient
+        };
 }

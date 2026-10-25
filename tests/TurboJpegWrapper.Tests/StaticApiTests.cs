@@ -70,8 +70,10 @@ public sealed class StaticApiTests
     [Fact]
     public void DecodeToBmp_StaticWithOptions_UsesScaling()
     {
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(1, 2));
+        var options = new TurboJpegDecodeOptions
+        {
+            ScalingFactor = new TurboJpegScalingFactor(1, 2)
+        };
 
         var bmp = TurboJpeg.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options);
 
@@ -91,7 +93,7 @@ public sealed class StaticApiTests
     {
         var bmp = TurboJpeg.DecodeToBmp(
             TestFixtures.Load("baseline-444.jpg"),
-            new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
+            new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 });
 
         Assert.Equal(24, BmpTestHelpers.BitsPerPixel(bmp));
         Assert.Equal(54 + 108 * 23, bmp.Length);
