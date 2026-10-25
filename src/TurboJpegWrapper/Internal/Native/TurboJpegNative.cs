@@ -55,11 +55,11 @@ internal static unsafe partial class TurboJpegNative
     internal static partial void Destroy(nint handle);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3DecompressHeader")]
-    internal static partial int DecompressHeader(SafeTurboJpegHandle handle, byte* jpegBuf, nuint jpegSize);
+    internal static partial int DecompressHeader(nint handle, byte* jpegBuf, nuint jpegSize);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3Decompress8")]
     internal static partial int Decompress8(
-        SafeTurboJpegHandle handle,
+        nint handle,
         byte* jpegBuf,
         nuint jpegSize,
         byte* dstBuf,
@@ -67,25 +67,22 @@ internal static unsafe partial class TurboJpegNative
         int pixelFormat);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3Get")]
-    internal static partial int Get(SafeTurboJpegHandle handle, int param);
+    internal static partial int Get(nint handle, int param);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3Set")]
-    internal static partial int Set(SafeTurboJpegHandle handle, int param, int value);
-
-    [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorStr")]
-    internal static partial nint GetErrorStr(SafeTurboJpegHandle handle);
+    internal static partial int Set(nint handle, int param, int value);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorStr")]
     internal static partial nint GetErrorStr(nint handle);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3GetErrorCode")]
-    internal static partial int GetErrorCode(SafeTurboJpegHandle handle);
+    internal static partial int GetErrorCode(nint handle);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3GetScalingFactors")]
     internal static partial TjScalingFactor* GetScalingFactors(out int count);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3SetScalingFactor")]
-    internal static partial int SetScalingFactor(SafeTurboJpegHandle handle, TjScalingFactor factor);
+    internal static partial int SetScalingFactor(nint handle, TjScalingFactor factor);
 
     internal static TurboJpegScalingFactor[] GetSupportedScalingFactors() =>
         s_supportedScalingFactors.GetOrCreate();
@@ -95,7 +92,7 @@ internal static unsafe partial class TurboJpegNative
         var nativeFactors = GetScalingFactors(out var count);
         if (nativeFactors == null || count <= 0)
         {
-            throw CreateException(null);
+            throw CreateException(0);
         }
 
         var factors = new TurboJpegScalingFactor[count];
@@ -122,13 +119,13 @@ internal static unsafe partial class TurboJpegNative
 
         if (handle == nint.Zero)
         {
-            throw CreateException(null);
+            throw CreateException(0);
         }
 
         var safeHandle = new SafeTurboJpegHandle(handle);
-        if (Set(safeHandle, ParamSaveMarkers, 0) != 0)
+        if (Set(handle, ParamSaveMarkers, 0) != 0)
         {
-            var exception = CreateException(safeHandle);
+            var exception = CreateException(handle);
             safeHandle.Dispose();
             throw exception;
         }
@@ -136,11 +133,11 @@ internal static unsafe partial class TurboJpegNative
         return safeHandle;
     }
 
-    internal static TurboJpegException CreateException(SafeTurboJpegHandle? handle)
+    internal static TurboJpegException CreateException(nint handle)
     {
-        if (handle is null)
+        if (handle == 0)
         {
-            var globalMessage = Marshal.PtrToStringUTF8(GetErrorStr(nint.Zero));
+            var globalMessage = Marshal.PtrToStringUTF8(GetErrorStr(0));
             return new TurboJpegException(
                 string.IsNullOrWhiteSpace(globalMessage)
                     ? "TurboJPEG failed to initialize a decompression handle."

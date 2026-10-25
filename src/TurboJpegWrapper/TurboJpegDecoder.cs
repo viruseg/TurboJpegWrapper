@@ -274,7 +274,7 @@ public sealed class TurboJpegDecoder : IDisposable
         in DecodePlan plan,
         Span<byte> bmp)
     {
-        var handle = _handle!;
+        var handle = _handle!.DangerousGetHandle();
         ApplyParameters(handle, options, plan.Orientation);
 
         BmpHeaderWriter.Write(
@@ -330,7 +330,7 @@ public sealed class TurboJpegDecoder : IDisposable
     }
 
     private void ApplyParameters(
-        SafeTurboJpegHandle handle, TurboJpegDecodeOptions options, ExifOrientation orientation)
+        nint handle, TurboJpegDecodeOptions options, ExifOrientation orientation)
     {
         var bottomUp = orientation is ExifOrientation.Normal or ExifOrientation.FlipHorizontal
             ? 1
@@ -412,7 +412,7 @@ public sealed class TurboJpegDecoder : IDisposable
     }
 
     private static unsafe void DecompressInto(
-        SafeTurboJpegHandle handle,
+        nint handle,
         ReadOnlySpan<byte> jpeg,
         Span<byte> destination,
         int pitch,
@@ -447,11 +447,13 @@ public sealed class TurboJpegDecoder : IDisposable
         bool includeSubsampling,
         bool includeLossless)
     {
-        var handle = _handle;
-        if (handle is null)
+        var safeHandle = _handle;
+        if (safeHandle is null)
         {
             throw new ObjectDisposedException(nameof(TurboJpegDecoder));
         }
+
+        var handle = safeHandle.DangerousGetHandle();
 
         try
         {
@@ -580,7 +582,7 @@ public sealed class TurboJpegDecoder : IDisposable
     }
 
     private void ApplyParameter(
-        SafeTurboJpegHandle handle, int parameter, int value, ref int appliedValue)
+        nint handle, int parameter, int value, ref int appliedValue)
     {
         if (appliedValue == value)
         {
@@ -591,7 +593,7 @@ public sealed class TurboJpegDecoder : IDisposable
         appliedValue = value;
     }
 
-    private void ApplyScalingFactor(SafeTurboJpegHandle handle, TurboJpegScalingFactor factor)
+    private void ApplyScalingFactor(nint handle, TurboJpegScalingFactor factor)
     {
         if (_appliedScalingFactor == factor)
         {
@@ -612,7 +614,7 @@ public sealed class TurboJpegDecoder : IDisposable
         _appliedScalingFactor = factor;
     }
 
-    private static void SetParameter(SafeTurboJpegHandle handle, int parameter, int value)
+    private static void SetParameter(nint handle, int parameter, int value)
     {
         if (TurboJpegNative.Set(handle, parameter, value) != 0)
         {
