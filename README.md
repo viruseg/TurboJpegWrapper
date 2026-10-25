@@ -2,13 +2,13 @@
 
 A production-oriented .NET 10 wrapper around the libjpeg-turbo TurboJPEG API for decoding JPEG images to complete 8-, 24-, or 32-bit BMP files.
 
-The library is decode-only. It does not encode JPEGs or expose YUV buffers. TurboJPEG writes grayscale, BGR, or BGRA pixels directly into the final BMP allocation. With EXIF auto-orientation, mirror and 180-degree orientations are applied in place; only the four axis-swapping orientations need a temporary decoded-size buffer.
+The library is decode-only. It does not encode JPEGs or expose YUV buffers. TurboJPEG writes grayscale, BGR, or BGRA pixels directly into the final BMP allocation. With EXIF auto-orientation, mirror and 180-degree orientations avoid a full decoded-size buffer; only the four axis-swapping orientations need one.
 
 ## Requirements
 
 - .NET 10.
-- Windows x64 for the bundled native binary (`turbojpeg.dll` 3.2.0).
-- The resolver also recognizes Linux and macOS runtime identifiers; see [Native library loading](#native-library-loading).
+- A TurboJPEG 3.2+ native library. The package bundles the Windows x64 binary (`turbojpeg.dll` 3.2.0); Linux and macOS on x64 or ARM64 are supported when the matching native library is supplied.
+- x86 is not supported.
 
 ## Quick start
 
@@ -147,12 +147,13 @@ Otherwise the resolver tries, in order:
 3. The operating system's normal library search.
 
 The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. Only `win-x64` is bundled today. To add another platform, place the matching library under `runtimes/{rid}/native/` and include it in the package. x86 is not supported.
-
 ## Threading and performance
 
 - `TurboJpeg` is safe for concurrent use; each operation rents an exclusive decoder and returns it afterward.
 - `TurboJpegDecoder` owns one native handle and is not thread-safe. Use one instance per thread or synchronize access.
-- Decoding writes directly into the final BMP buffer for the selected depth. With `AutoOrient`, orientations 1-4 decode directly into the BMP and are mirrored in place when needed; orientations 5-8 rent a decoded-size scratch buffer from the shared array pool and transpose it into the BMP.
+- Decoding writes directly into the final BMP buffer for the selected depth. With `AutoOrient`, orientations 1-4 write directly into the BMP; 24-bit mirroring uses one pooled row buffer. Orientations 5-8 rent a decoded-size scratch buffer from the shared array pool and transpose it into the BMP.
+- The 24-bit row mirror uses a portable `Vector128` implementation on both architectures. Axis-swapping transposes use SSE2/SSSE3 implementations on x64 and portable `Vector128` implementations on ARM64.
+- The span decode overloads let callers reuse a buffer; a 12 MP 32-bit decode measured 0 managed bytes per operation versus 48 MB for the `byte[]` overload in the external harness.
 - Supported scaling factors are cached after the first successful query.
 
 ## Packaging
