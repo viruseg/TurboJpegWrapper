@@ -62,7 +62,8 @@ public sealed class TurboJpegDecoder : IDisposable
             throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
         }
 
-        return ReadHeader(jpeg, includeDensity: true);
+        return ReadHeader(
+            jpeg, includeDensity: true, includeSubsampling: true, includeLossless: true);
     }
 
     /// <summary>Decodes a JPEG image to a complete BMP file using the decoder's default options.</summary>
@@ -200,7 +201,9 @@ public sealed class TurboJpegDecoder : IDisposable
             throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
         }
 
-        var info = ReadHeader(jpeg, includeDensity);
+        var includeLossless = options.ScalingFactor != TurboJpegScalingFactor.One;
+        var info = ReadHeader(
+            jpeg, includeDensity, includeSubsampling: false, includeLossless);
         if (!info.CanDecodeToBmp)
         {
             throw new TurboJpegUnsupportedException(
@@ -438,7 +441,11 @@ public sealed class TurboJpegDecoder : IDisposable
         _handle = null;
     }
 
-    private unsafe TurboJpegImageInfo ReadHeader(ReadOnlySpan<byte> jpeg, bool includeDensity)
+    private unsafe TurboJpegImageInfo ReadHeader(
+        ReadOnlySpan<byte> jpeg,
+        bool includeDensity,
+        bool includeSubsampling,
+        bool includeLossless)
     {
         var handle = _handle;
         if (handle is null)
@@ -460,8 +467,12 @@ public sealed class TurboJpegDecoder : IDisposable
             var height = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegHeight);
             var precision = TurboJpegNative.Get(handle, TurboJpegNative.ParamPrecision);
             var colorspace = TurboJpegNative.Get(handle, TurboJpegNative.ParamColorspace);
-            var subsampling = TurboJpegNative.Get(handle, TurboJpegNative.ParamSubsamp);
-            var lossless = TurboJpegNative.Get(handle, TurboJpegNative.ParamLossless);
+            var subsampling = includeSubsampling
+                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamSubsamp)
+                : (int)TurboJpegSubsampling.Unknown;
+            var lossless = includeLossless
+                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamLossless)
+                : 0;
             var densityX = includeDensity
                 ? TurboJpegNative.Get(handle, TurboJpegNative.ParamXDensity)
                 : 0;

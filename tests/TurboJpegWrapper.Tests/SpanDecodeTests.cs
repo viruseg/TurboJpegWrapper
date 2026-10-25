@@ -116,6 +116,17 @@ public sealed class SpanDecodeTests
     }
 
     [Fact]
+    public void GetBmpSize_LosslessWithScaling_ThrowsArgumentException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var options = new TurboJpegDecodeOptions(
+            scalingFactor: new TurboJpegScalingFactor(1, 2));
+
+        Assert.Throws<ArgumentException>(
+            () => decoder.GetBmpSize(TestFixtures.Load("lossless.jpg"), options));
+    }
+
+    [Fact]
     public void GetBmpSize_NullOptions_ThrowsArgumentNullException()
     {
         using var decoder = new TurboJpegDecoder();
