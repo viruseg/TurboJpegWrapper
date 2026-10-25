@@ -1,0 +1,1 @@
+﻿dotnet pack TurboJpegWrapper.slnx -c Release -o artifacts/packages
