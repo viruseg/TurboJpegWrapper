@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -15,6 +16,18 @@ internal static class BmpOrientationWriter
         1, 5, 9, 13,
         2, 6, 10, 14,
         3, 7, 11, 15);
+    private static readonly Vector128<byte> s_mirrorLeftToRight = Vector128.Create(
+        (byte)9, 10, 11,
+        6, 7, 8,
+        3, 4, 5,
+        0, 1, 2,
+        12, 13, 14, 15);
+    private static readonly Vector128<byte> s_mirrorRightToLeft = Vector128.Create(
+        (byte)13, 14, 15,
+        10, 11, 12,
+        7, 8, 9,
+        4, 5, 6,
+        0, 1, 2, 3);
 
     internal static void Write(
         Span<byte> destination,
@@ -138,9 +151,16 @@ internal static class BmpOrientationWriter
                 break;
 
             case 3:
-                for (var y = 0; y < height; y++)
+                if (rowBytes >= 16 && Vector128.IsHardwareAccelerated)
                 {
-                    Reverse24(pixels.Slice(y * stride, rowBytes));
+                    Mirror24RowsBuffered(pixels, width, height, stride);
+                }
+                else
+                {
+                    for (var y = 0; y < height; y++)
+                    {
+                        Reverse24(pixels.Slice(y * stride, rowBytes));
+                    }
                 }
 
                 break;
@@ -653,6 +673,59 @@ internal static class BmpOrientationWriter
                 destinationRow * destinationStride + destinationColumn * 4),
             Unsafe.ReadUnaligned<uint>(
                 ref Unsafe.Add(ref sourceRef, y * sourceStride + x * 4)));
+    }
+
+    private static void Mirror24RowsBuffered(
+        Span<byte> pixels, int width, int height, int stride)
+    {
+        var rowBytes = width * 3;
+        var temp = ArrayPool<byte>.Shared.Rent(rowBytes + 16);
+
+        try
+        {
+            var tempSpan = temp.AsSpan(0, rowBytes + 16);
+            ref var tempRef = ref MemoryMarshal.GetReference(tempSpan);
+
+            for (var y = 0; y < height; y++)
+            {
+                var source = pixels.Slice(y * stride, rowBytes);
+                ref var sourceRef = ref MemoryMarshal.GetReference(source);
+
+                var first = Vector128.Shuffle(
+                    Unsafe.ReadUnaligned<Vector128<byte>>(
+                        ref Unsafe.Add(ref sourceRef, rowBytes - 16)),
+                    s_mirrorRightToLeft);
+                Unsafe.WriteUnaligned(ref tempRef, first);
+
+                var remaining = rowBytes - 12;
+                var output = 12;
+
+                while (remaining >= 12)
+                {
+                    var block = Vector128.Shuffle(
+                        Unsafe.ReadUnaligned<Vector128<byte>>(
+                            ref Unsafe.Add(ref sourceRef, remaining - 12)),
+                        s_mirrorLeftToRight);
+                    Unsafe.WriteUnaligned(ref Unsafe.Add(ref tempRef, output), block);
+                    output += 12;
+                    remaining -= 12;
+                }
+
+                for (var i = 0; i < remaining; i += 3)
+                {
+                    var tail = remaining - 3 - i;
+                    temp[output + i] = source[tail];
+                    temp[output + i + 1] = source[tail + 1];
+                    temp[output + i + 2] = source[tail + 2];
+                }
+
+                tempSpan[..rowBytes].CopyTo(source);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(temp);
+        }
     }
 
     private static void Reverse24(Span<byte> row)
