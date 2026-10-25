@@ -10,6 +10,8 @@ public sealed class MirrorRowsTests
     [InlineData(3, 0)]
     [InlineData(4, 5)]
     [InlineData(5, 0)]
+    [InlineData(6, 0)]
+    [InlineData(6, 5)]
     [InlineData(7, 5)]
     [InlineData(8, 0)]
     [InlineData(9, 5)]
