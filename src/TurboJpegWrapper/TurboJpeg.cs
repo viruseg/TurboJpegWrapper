@@ -23,7 +23,7 @@ public static class TurboJpeg
         }
     }
 
-    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file using default options.</summary>
+    /// <summary>Decodes a JPEG image to a complete BMP file using default options.</summary>
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <returns>The complete BMP file contents.</returns>
     /// <exception cref="ArgumentException">
@@ -39,7 +39,7 @@ public static class TurboJpeg
     public static byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg) =>
         DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default);
 
-    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file using the specified options.</summary>
+    /// <summary>Decodes a JPEG image to a complete BMP file using the specified options.</summary>
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <param name="options">The decoding options.</param>
     /// <returns>The complete BMP file contents.</returns>

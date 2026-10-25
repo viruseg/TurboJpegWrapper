@@ -16,7 +16,7 @@ public readonly record struct TurboJpegImageInfo(
     bool IsLossless)
 {
     /// <summary>
-    /// Gets a value indicating whether the image can be decoded to a 32-bit BMP by this library.
+    /// Gets a value indicating whether the image can be decoded to a BMP by this library.
     /// </summary>
     public bool CanDecodeToBmp =>
         Precision == 8 &&

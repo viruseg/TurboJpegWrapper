@@ -63,7 +63,7 @@ public sealed class TurboJpegDecoder : IDisposable
         return ReadHeader(jpeg);
     }
 
-    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file using the decoder's default options.</summary>
+    /// <summary>Decodes a JPEG image to a complete BMP file using the decoder's default options.</summary>
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <returns>The complete BMP file contents.</returns>
     /// <exception cref="ArgumentException">
@@ -79,7 +79,7 @@ public sealed class TurboJpegDecoder : IDisposable
     /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
     public byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg) => DecodeToBmp(jpeg, _defaultOptions);
 
-    /// <summary>Decodes a JPEG image to a complete 32-bit BMP file using the specified options.</summary>
+    /// <summary>Decodes a JPEG image to a complete BMP file using the specified options.</summary>
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <param name="options">The decoding options.</param>
     /// <returns>The complete BMP file contents.</returns>
@@ -115,6 +115,7 @@ public sealed class TurboJpegDecoder : IDisposable
         ValidateScalingFactor(info, options);
 
         var factor = options.ScalingFactor;
+        var bitDepth = options.BmpBitDepth;
         var width = ScaleDimension(info.Width, factor);
         var height = ScaleDimension(info.Height, factor);
 
@@ -126,8 +127,7 @@ public sealed class TurboJpegDecoder : IDisposable
                 $"which exceeds the configured maximum of {options.MaxPixels} pixels.");
         }
 
-        var total = BmpHeaderWriter.GetFileSize(
-            width, height, TurboJpegBmpBitDepth.Bpp32);
+        var total = BmpHeaderWriter.GetFileSize(width, height, bitDepth);
         if (total > Array.MaxLength)
         {
             throw new TurboJpegImageTooLargeException(
@@ -149,15 +149,20 @@ public sealed class TurboJpegDecoder : IDisposable
         ApplyScalingFactor(handle, factor);
 
         var bmp = GC.AllocateUninitializedArray<byte>((int)total);
-        BmpHeaderWriter.Write(
-            bmp.AsSpan(0, BmpHeaderWriter.GetPixelOffset(TurboJpegBmpBitDepth.Bpp32)),
-            width,
-            height,
-            TurboJpegBmpBitDepth.Bpp32);
+        BmpHeaderWriter.Write(bmp, width, height, bitDepth);
+        BmpHeaderWriter.ClearPadding(bmp, width, height, bitDepth);
 
-        var pitch = checked(width * 4);
+        var pitch = BmpHeaderWriter.GetRowStride(width, bitDepth);
+        var pixelFormat = bitDepth switch
+        {
+            TurboJpegBmpBitDepth.Bpp8 => TurboJpegNative.PixelFormatGray,
+            TurboJpegBmpBitDepth.Bpp24 => TurboJpegNative.PixelFormatBgr,
+            TurboJpegBmpBitDepth.Bpp32 => TurboJpegNative.PixelFormatBgra,
+            _ => throw new ArgumentOutOfRangeException(nameof(options), bitDepth, null)
+        };
+
         fixed (byte* jpegBuf = jpeg)
-        fixed (byte* dstBuf = bmp.AsSpan(BmpHeaderWriter.HeaderSize))
+        fixed (byte* dstBuf = bmp.AsSpan(BmpHeaderWriter.GetPixelOffset(bitDepth)))
         {
             if (TurboJpegNative.Decompress8(
                     handle,
@@ -165,7 +170,7 @@ public sealed class TurboJpegDecoder : IDisposable
                     (nuint)jpeg.Length,
                     dstBuf,
                     pitch,
-                    TurboJpegNative.PixelFormatBgra) != 0)
+                    pixelFormat) != 0)
             {
                 throw TurboJpegNative.CreateException(handle);
             }

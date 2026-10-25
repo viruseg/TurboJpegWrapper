@@ -87,6 +87,17 @@ public sealed class StaticApiTests
     }
 
     [Fact]
+    public void DecodeToBmp_StaticWith24BitOptions_Writes24BitBmp()
+    {
+        var bmp = TurboJpeg.DecodeToBmp(
+            TestFixtures.Load("baseline-444.jpg"),
+            new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
+
+        Assert.Equal(24, BmpTestHelpers.BitsPerPixel(bmp));
+        Assert.Equal(54 + 108 * 23, bmp.Length);
+    }
+
+    [Fact]
     public void Pool_Return_DoesNotEnqueueDisposedDecoder()
     {
         var pool = new TurboJpegDecoderPool();

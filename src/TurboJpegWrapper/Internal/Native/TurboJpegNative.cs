@@ -19,6 +19,8 @@ internal static unsafe partial class TurboJpegNative
 
     internal const int InitDecompress = 1;
     internal const int ApiVersion = 3_002_000;
+    internal const int PixelFormatBgr = 1;
+    internal const int PixelFormatGray = 6;
     internal const int PixelFormatBgra = 8;
 
     internal const int ParamBottomUp = 1;
