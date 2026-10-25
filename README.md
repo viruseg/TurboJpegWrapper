@@ -1,8 +1,8 @@
 # TurboJpegWrapper
 
-A production-oriented .NET 10 wrapper around the libjpeg-turbo TurboJPEG API for decoding JPEG images to complete 32-bit BMP files.
+A production-oriented .NET 10 wrapper around the libjpeg-turbo TurboJPEG API for decoding JPEG images to complete 8-, 24-, or 32-bit BMP files.
 
-The library is decode-only. It does not encode JPEGs, expose YUV buffers, or require an intermediate pixel buffer: TurboJPEG writes BGRA pixels directly into the final BMP allocation.
+The library is decode-only. It does not encode JPEGs, expose YUV buffers, or require an intermediate pixel buffer: TurboJPEG writes grayscale, BGR, or BGRA pixels directly into the final BMP allocation.
 
 ## Requirements
 
@@ -18,6 +18,11 @@ using TurboJpegWrapper;
 byte[] jpeg = File.ReadAllBytes("photo.jpg");
 byte[] bmp = TurboJpeg.DecodeToBmp(jpeg);
 File.WriteAllBytes("photo.bmp", bmp);
+
+byte[] bmp24 = TurboJpeg.DecodeToBmp(
+    jpeg,
+    new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
+File.WriteAllBytes("photo-24.bmp", bmp24);
 ```
 
 The result is a complete BMP file, not raw pixels.
@@ -68,23 +73,26 @@ the decoder becomes disposed and the original exception is rethrown.
 | `MaxPixels` | `100_000_000` | Maximum number of source pixels; `0` means no limit. |
 | `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations surface as `TurboJpegException`. |
 | `ScanLimit` | `500` | Maximum number of progressive scans; `0` means no limit. |
+| `BmpBitDepth` | `Bpp32` | BMP output depth: `Bpp8` (grayscale plus 256-entry palette), `Bpp24` (BGR), or `Bpp32` (BGRA). |
 
 `MaxPixels` and the maximum array length are checked before the BMP buffer is allocated. A smaller scaling factor does not relax the source-pixel limit.
 
 ## BMP output
 
-- Complete BMP file with a 54-byte `BITMAPINFOHEADER`.
-- 32 bits per pixel, BGRA byte order.
-- Bottom-up rows (`biHeight` is positive).
-- `BI_RGB` compression, no row padding.
-- Alpha is always 255.
-- File size is `54 + width * height * 4` bytes; `biSizeImage` is `width * height * 4`.
+- Complete BMP file with a 54-byte `BITMAPINFOHEADER`; 8-bit output adds a 1024-byte palette.
+- 8 bits per pixel: one grayscale byte per pixel with a 256-entry grayscale palette. Color is discarded, so the result is always grayscale.
+- 24 bits per pixel: BGR byte order.
+- 32 bits per pixel: BGRA byte order with alpha always 255.
+- Bottom-up rows (`biHeight` is positive), `BI_RGB` compression.
+- Rows are padded to a 4-byte boundary: `stride = (width * bytesPerPixel + 3) & ~3`. Padding bytes are zero; 32-bit rows need no padding.
+- Pixel data starts at 54 bytes for 24/32 bpp and at 1078 bytes for 8 bpp.
+- `biSizeImage` is `stride * height`; the file size is `pixelOffset + stride * height`.
 
 ## Supported inputs
 
 - 8-bit lossy JPEG, including progressive JPEG.
 - 8-bit lossless JPEG at `1/1` scaling.
-- Grayscale JPEG; channels are expanded to equal BGRA values.
+- Grayscale JPEG; channels are expanded to equal BGR/BGRA values, or used directly at 8 bpp.
 - Images with any supported TurboJPEG chroma subsampling.
 
 The following are rejected with `TurboJpegUnsupportedException`:
@@ -122,7 +130,7 @@ The resolver knows these runtime identifiers: `win-x64`, `win-x86`, `win-arm64`,
 
 - `TurboJpeg` is safe for concurrent use; each operation rents an exclusive decoder and returns it afterward.
 - `TurboJpegDecoder` owns one native handle and is not thread-safe. Use one instance per thread or synchronize access.
-- Decoding writes directly into the final BMP buffer. There is no intermediate full-image copy.
+- Decoding writes directly into the final BMP buffer for the selected depth. There is no intermediate full-image copy.
 - Supported scaling factors are cached after the first successful query.
 
 ## Packaging
