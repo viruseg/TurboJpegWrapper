@@ -72,7 +72,7 @@ the decoder becomes disposed and the original exception is rethrown.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `ScalingFactor` | `1/1` | Output scaling. Only exact factors returned by `GetSupportedScalingFactors()` are accepted. Upscaling and unsupported factors throw `ArgumentException`. Lossless JPEG requires `1/1`. |
+| `ScalingFactor` | `1/1` | Output scaling. Every factor returned by `GetSupportedScalingFactors()` is accepted, including upscaling factors such as `2/1`. Unsupported factors throw `ArgumentException`. Lossless JPEG requires `1/1`. |
 | `FastDct` | `false` | Uses the fastest DCT/IDCT algorithm. |
 | `FastUpsampling` | `false` | Uses the fastest chroma upsampling algorithm. |
 | `MaxPixels` | `100_000_000` | Maximum number of source pixels; `0` means no limit. |

@@ -40,17 +40,6 @@ public sealed class DecodeOptionsTests
     }
 
     [Fact]
-    public void DecodeToBmp_UpscaleFactor_ThrowsArgumentException()
-    {
-        using var decoder = new TurboJpegDecoder();
-        var options = new TurboJpegDecodeOptions(
-            scalingFactor: new TurboJpegScalingFactor(2, 1));
-
-        Assert.Throws<ArgumentException>(
-            () => decoder.DecodeToBmp(TestFixtures.Load("baseline-444.jpg"), options));
-    }
-
-    [Fact]
     public void DecodeToBmp_UnsupportedFactor_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();

@@ -6,15 +6,41 @@ namespace TurboJpegWrapper.Tests;
 public sealed class ScalingFactorTests
 {
     [Fact]
-    public void GetSupportedScalingFactors_ContainsOneAndDownscalesOnly()
+    public void GetSupportedScalingFactors_ContainsDownscalesAndUpscales()
     {
-        var factors = TurboJpeg.GetSupportedScalingFactors();
+        var factors = TurboJpeg.GetSupportedScalingFactors().ToArray();
 
-        Assert.NotEmpty(factors.ToArray());
-        Assert.Contains(factors.ToArray(), f => f == TurboJpegScalingFactor.One);
-        Assert.All(factors.ToArray(), f => Assert.True(f.Numerator <= f.Denominator));
-        Assert.Contains(factors.ToArray(), f => f == new TurboJpegScalingFactor(1, 2));
-        Assert.DoesNotContain(factors.ToArray(), f => f == new TurboJpegScalingFactor(2, 1));
+        Assert.NotEmpty(factors);
+        Assert.Contains(factors, f => f == TurboJpegScalingFactor.One);
+        Assert.Contains(factors, f => f == new TurboJpegScalingFactor(1, 2));
+        Assert.Contains(factors, f => f == new TurboJpegScalingFactor(2, 1));
+        Assert.Contains(factors, f => f == new TurboJpegScalingFactor(9, 8));
+        Assert.All(factors, f => Assert.True(f.Numerator > 0 && f.Denominator > 0));
+    }
+
+    [Theory]
+    [InlineData(2, 1)]
+    [InlineData(3, 2)]
+    [InlineData(9, 8)]
+    public void DecodeToBmp_UpscalingFactor_ProducesCeiledDimensions(int numerator, int denominator)
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("baseline-444.jpg");
+
+        var bmp = decoder.DecodeToBmp(
+            jpeg,
+            new TurboJpegDecodeOptions(
+                scalingFactor: new TurboJpegScalingFactor(numerator, denominator)));
+
+        Assert.Equal(
+            (TestFixtures.Width * numerator + denominator - 1) / denominator,
+            BmpTestHelpers.Width(bmp));
+        Assert.Equal(
+            (TestFixtures.Height * numerator + denominator - 1) / denominator,
+            BmpTestHelpers.Height(bmp));
+        Assert.Equal(
+            BmpTestHelpers.HeaderSize + BmpTestHelpers.Width(bmp) * BmpTestHelpers.Height(bmp) * 4,
+            bmp.Length);
     }
 
     [Fact]
@@ -27,10 +53,10 @@ public sealed class ScalingFactorTests
     }
 
     [Fact]
-    public void GetFilteredScalingFactors_ReturnsCachedInstance()
+    public void GetNativeScalingFactors_ReturnsCachedInstance()
     {
-        var first = TurboJpegNative.GetFilteredScalingFactors();
-        var second = TurboJpegNative.GetFilteredScalingFactors();
+        var first = TurboJpegNative.GetSupportedScalingFactors();
+        var second = TurboJpegNative.GetSupportedScalingFactors();
 
         Assert.Same(first, second);
     }

@@ -6,7 +6,7 @@ namespace TurboJpegWrapper;
 /// <summary>Provides static access to TurboJPEG operations.</summary>
 public static class TurboJpeg
 {
-    /// <summary>Gets the scaling factors supported by TurboJPEG, including 1:1 and downscaling factors only.</summary>
+    /// <summary>Gets the scaling factors supported by TurboJPEG, including upscaling and downscaling factors.</summary>
     /// <remarks>The factors are read from the native library once and cached after the first successful query.</remarks>
     /// <returns>A read-only span over the supported scaling factors in native order.</returns>
     /// <exception cref="TurboJpegException">The native library could not be loaded or the native scaling-factor query failed.</exception>
@@ -15,7 +15,7 @@ public static class TurboJpeg
     {
         try
         {
-            return TurboJpegNative.GetFilteredScalingFactors();
+            return TurboJpegNative.GetSupportedScalingFactors();
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {

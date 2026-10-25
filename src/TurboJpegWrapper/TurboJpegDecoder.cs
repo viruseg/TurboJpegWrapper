@@ -340,15 +340,7 @@ public sealed class TurboJpegDecoder : IDisposable
                 nameof(options));
         }
 
-        if (factor.Numerator > factor.Denominator)
-        {
-            throw new ArgumentException(
-                $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported; " +
-                "only downscaling factors up to 1:1 are allowed.",
-                nameof(options));
-        }
-
-        if (Array.IndexOf(TurboJpegNative.GetFilteredScalingFactors(), factor) < 0)
+        if (Array.IndexOf(TurboJpegNative.GetSupportedScalingFactors(), factor) < 0)
         {
             throw new ArgumentException(
                 $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported by TurboJPEG.",

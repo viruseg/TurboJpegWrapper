@@ -12,8 +12,8 @@ internal struct TjScalingFactor
 
 internal static unsafe partial class TurboJpegNative
 {
-    private static readonly RetryableCache<TurboJpegScalingFactor[]> s_filteredScalingFactors =
-        new(LoadFilteredScalingFactors);
+    private static readonly RetryableCache<TurboJpegScalingFactor[]> s_supportedScalingFactors =
+        new(LoadSupportedScalingFactors);
 
     internal const string LibraryName = "turbojpeg";
 
@@ -84,10 +84,10 @@ internal static unsafe partial class TurboJpegNative
     [LibraryImport(LibraryName, EntryPoint = "tj3SetScalingFactor")]
     internal static partial int SetScalingFactor(SafeTurboJpegHandle handle, TjScalingFactor factor);
 
-    internal static TurboJpegScalingFactor[] GetFilteredScalingFactors() =>
-        s_filteredScalingFactors.GetOrCreate();
+    internal static TurboJpegScalingFactor[] GetSupportedScalingFactors() =>
+        s_supportedScalingFactors.GetOrCreate();
 
-    private static TurboJpegScalingFactor[] LoadFilteredScalingFactors()
+    private static TurboJpegScalingFactor[] LoadSupportedScalingFactors()
     {
         var nativeFactors = GetScalingFactors(out var count);
         if (nativeFactors == null || count <= 0)
@@ -96,19 +96,10 @@ internal static unsafe partial class TurboJpegNative
         }
 
         var factors = new TurboJpegScalingFactor[count];
-        var filteredCount = 0;
         for (var i = 0; i < count; i++)
         {
             var factor = nativeFactors[i];
-            if (factor.Numerator <= factor.Denominator)
-            {
-                factors[filteredCount++] = new TurboJpegScalingFactor(factor.Numerator, factor.Denominator);
-            }
-        }
-
-        if (filteredCount != count)
-        {
-            Array.Resize(ref factors, filteredCount);
+            factors[i] = new TurboJpegScalingFactor(factor.Numerator, factor.Denominator);
         }
 
         return factors;
