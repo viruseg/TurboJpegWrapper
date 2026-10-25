@@ -45,6 +45,33 @@ public sealed class NativeLoaderTests
             () => TurboJpegNativeLoader.GetLibraryFileName(OSPlatform.Create("FREEBSD")));
     }
 
+    [Theory]
+    [InlineData("WINDOWS", Architecture.X64, "win-x64", "turbojpeg.dll", false)]
+    [InlineData("WINDOWS", Architecture.Arm64, "win-arm64", "turbojpeg.dll", false)]
+    [InlineData("LINUX", Architecture.X64, "linux-x64", "libturbojpeg.so", false)]
+    [InlineData("LINUX", Architecture.Arm64, "linux-arm64", "libturbojpeg.so", false)]
+    [InlineData("OSX", Architecture.X64, "osx-x64", "libturbojpeg.dylib", true)]
+    [InlineData("OSX", Architecture.Arm64, "osx-arm64", "libturbojpeg.dylib", true)]
+    public void GetCandidatePaths_KnownPlatforms_ReturnExpectedOrder(
+        string os, Architecture architecture, string rid, string fileName, bool hasUniversal)
+    {
+        var baseDirectory = Path.GetTempPath();
+        var expected = new List<string>
+        {
+            Path.Combine(baseDirectory, "runtimes", rid, "native", fileName)
+        };
+        if (hasUniversal)
+        {
+            expected.Add(Path.Combine(baseDirectory, "runtimes", "osx", "native", fileName));
+        }
+        expected.Add(Path.Combine(baseDirectory, fileName));
+
+        var actual = TurboJpegNativeLoader.GetCandidatePaths(
+            OSPlatform.Create(os), architecture, baseDirectory);
+
+        Assert.Equal(expected, actual);
+    }
+
     [Fact]
     public void GetCandidatePaths_ContainsCurrentRuntimeAsset()
     {
@@ -58,6 +85,13 @@ public sealed class NativeLoaderTests
         var expected = Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "native", file);
 
         Assert.Contains(expected, TurboJpegNativeLoader.GetCandidatePaths());
+
+        if (currentOs == OSPlatform.OSX)
+        {
+            Assert.Contains(
+                Path.Combine(AppContext.BaseDirectory, "runtimes", "osx", "native", file),
+                TurboJpegNativeLoader.GetCandidatePaths());
+        }
     }
 
     [Fact]

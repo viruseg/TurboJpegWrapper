@@ -150,19 +150,32 @@ internal static class TurboJpegNativeLoader
         return null!;
     }
 
-    internal static IReadOnlyList<string> GetCandidatePaths()
+    internal static IReadOnlyList<string> GetCandidatePaths() =>
+        GetCandidatePaths(
+            GetCurrentPlatform(),
+            RuntimeInformation.ProcessArchitecture,
+            AppContext.BaseDirectory);
+
+    internal static IReadOnlyList<string> GetCandidatePaths(
+        OSPlatform os,
+        Architecture architecture,
+        string baseDirectory)
     {
-        var os = GetCurrentPlatform();
-        var rid = GetRuntimeIdentifier(os, RuntimeInformation.ProcessArchitecture);
+        var rid = GetRuntimeIdentifier(os, architecture);
         var fileName = GetLibraryFileName(os);
-        var paths = new List<string>(2);
+        var paths = new List<string>(3);
 
         if (rid is not null)
         {
-            paths.Add(Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "native", fileName));
+            paths.Add(Path.Combine(baseDirectory, "runtimes", rid, "native", fileName));
         }
 
-        paths.Add(Path.Combine(AppContext.BaseDirectory, fileName));
+        if (os == OSPlatform.OSX)
+        {
+            paths.Add(Path.Combine(baseDirectory, "runtimes", "osx", "native", fileName));
+        }
+
+        paths.Add(Path.Combine(baseDirectory, fileName));
 
         return paths;
     }
