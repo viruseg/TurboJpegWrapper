@@ -1,3 +1,5 @@
+using TurboJpegWrapper.Internal;
+
 namespace TurboJpegWrapper;
 
 /// <summary>Immutable options that control JPEG decoding.</summary>
@@ -84,8 +86,7 @@ public sealed record TurboJpegDecodeOptions
                 and not TurboJpegBmpBitDepth.Bpp24
                 and not TurboJpegBmpBitDepth.Bpp32)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(BmpBitDepth), value, "The BMP bit depth must be 8, 24, or 32.");
+                ThrowHelper.ThrowBmpBitDepthOutOfRange(nameof(BmpBitDepth), value);
             }
 
             _bmpBitDepth = value;

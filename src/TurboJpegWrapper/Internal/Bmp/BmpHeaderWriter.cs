@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using TurboJpegWrapper.Internal;
 
 namespace TurboJpegWrapper.Internal.Bmp;
 
@@ -28,15 +29,21 @@ internal static class BmpHeaderWriter
         };
     }
 
-    internal static int GetBytesPerPixel(TurboJpegBmpBitDepth bitDepth) =>
-        bitDepth switch
+    internal static int GetBytesPerPixel(TurboJpegBmpBitDepth bitDepth)
+    {
+        switch (bitDepth)
         {
-            TurboJpegBmpBitDepth.Bpp8 => 1,
-            TurboJpegBmpBitDepth.Bpp24 => 3,
-            TurboJpegBmpBitDepth.Bpp32 => 4,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(bitDepth), bitDepth, "The BMP bit depth must be 8, 24, or 32.")
-        };
+            case TurboJpegBmpBitDepth.Bpp8:
+                return 1;
+            case TurboJpegBmpBitDepth.Bpp24:
+                return 3;
+            case TurboJpegBmpBitDepth.Bpp32:
+                return 4;
+            default:
+                ThrowHelper.ThrowBmpBitDepthOutOfRange(nameof(bitDepth), bitDepth);
+                return 0;
+        }
+    }
 
     internal static int GetPixelOffset(TurboJpegBmpBitDepth bitDepth) =>
         bitDepth == TurboJpegBmpBitDepth.Bpp8
@@ -59,21 +66,18 @@ internal static class BmpHeaderWriter
     {
         if (width <= 0)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(width), width, "The width must be greater than zero.");
+            ThrowHelper.ThrowWidthNotPositive(width);
         }
 
         if (height <= 0)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(height), height, "The height must be greater than zero.");
+            ThrowHelper.ThrowHeightNotPositive(height);
         }
 
         var pixelOffset = GetPixelOffset(bitDepth);
         if (destination.Length < pixelOffset)
         {
-            throw new ArgumentException(
-                $"The destination must be at least {pixelOffset} bytes long.", nameof(destination));
+            ThrowHelper.ThrowDestinationTooSmall(pixelOffset);
         }
 
         var fileSize = checked((int)GetFileSize(width, height, bitDepth));

@@ -1,3 +1,4 @@
+using TurboJpegWrapper.Internal;
 using TurboJpegWrapper.Internal.Native;
 using TurboJpegWrapper.Internal.Pooling;
 
@@ -19,7 +20,8 @@ public static class TurboJpeg
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            throw TurboJpegNative.CreateLoadException(ex);
+            ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex));
+            return default;
         }
     }
 
@@ -66,7 +68,8 @@ public static class TurboJpeg
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            throw TurboJpegNative.CreateLoadException(ex);
+            ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex));
+            return null!;
         }
         finally
         {
@@ -107,7 +110,8 @@ public static class TurboJpeg
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            throw TurboJpegNative.CreateLoadException(ex);
+            ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex));
+            return 0;
         }
         finally
         {
@@ -158,7 +162,8 @@ public static class TurboJpeg
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            throw TurboJpegNative.CreateLoadException(ex);
+            ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex));
+            return 0;
         }
         finally
         {
@@ -184,7 +189,8 @@ public static class TurboJpeg
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            throw TurboJpegNative.CreateLoadException(ex);
+            ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex));
+            return default;
         }
         finally
         {

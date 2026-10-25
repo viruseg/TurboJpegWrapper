@@ -92,7 +92,7 @@ internal static unsafe partial class TurboJpegNative
         var nativeFactors = GetScalingFactors(out var count);
         if (nativeFactors == null || count <= 0)
         {
-            throw CreateException(0);
+            ThrowHelper.Throw(CreateException(0));
         }
 
         var factors = new TurboJpegScalingFactor[count];
@@ -107,19 +107,19 @@ internal static unsafe partial class TurboJpegNative
 
     internal static SafeTurboJpegHandle CreateDecoderHandle()
     {
-        nint handle;
+        nint handle = nint.Zero;
         try
         {
             handle = InitVersion(InitDecompress, ApiVersion);
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            throw CreateLoadException(ex);
+            ThrowHelper.Throw(CreateLoadException(ex));
         }
 
         if (handle == nint.Zero)
         {
-            throw CreateException(0);
+            ThrowHelper.Throw(CreateException(0));
         }
 
         var safeHandle = new SafeTurboJpegHandle(handle);
@@ -127,7 +127,7 @@ internal static unsafe partial class TurboJpegNative
         {
             var exception = CreateException(handle);
             safeHandle.Dispose();
-            throw exception;
+            ThrowHelper.Throw(exception);
         }
 
         return safeHandle;

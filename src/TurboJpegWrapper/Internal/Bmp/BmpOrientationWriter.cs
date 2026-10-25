@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using TurboJpegWrapper.Internal;
 using TurboJpegWrapper.Internal.Exif;
 
 namespace TurboJpegWrapper.Internal.Bmp;
@@ -195,8 +196,8 @@ internal static class BmpOrientationWriter
                 break;
 
             default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(bytesPerPixel), bytesPerPixel, null);
+                ThrowHelper.ThrowBytesPerPixelOutOfRange(bytesPerPixel);
+                break;
         }
     }
 
@@ -207,7 +208,7 @@ internal static class BmpOrientationWriter
             or ExifOrientation.Transverse
             or ExifOrientation.Rotate270))
         {
-            throw new ArgumentOutOfRangeException(nameof(orientation), orientation, null);
+            ThrowHelper.ThrowOrientationOutOfRange(orientation);
         }
     }
 
@@ -258,8 +259,8 @@ internal static class BmpOrientationWriter
                     leftToRightColumn);
                 break;
             default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(bytesPerPixel), bytesPerPixel, null);
+                ThrowHelper.ThrowBytesPerPixelOutOfRange(bytesPerPixel);
+                break;
         }
     }
 
@@ -302,8 +303,8 @@ internal static class BmpOrientationWriter
                 break;
 
             default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(bytesPerPixel), bytesPerPixel, null);
+                ThrowHelper.ThrowBytesPerPixelOutOfRange(bytesPerPixel);
+                break;
         }
     }
 

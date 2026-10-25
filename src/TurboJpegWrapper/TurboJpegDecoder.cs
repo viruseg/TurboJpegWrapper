@@ -1,4 +1,5 @@
 using System.Buffers;
+using TurboJpegWrapper.Internal;
 using TurboJpegWrapper.Internal.Bmp;
 using TurboJpegWrapper.Internal.Exif;
 using TurboJpegWrapper.Internal.Native;
@@ -59,7 +60,7 @@ public sealed class TurboJpegDecoder : IDisposable
 
         if (jpeg.IsEmpty)
         {
-            throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
+            ThrowHelper.ThrowJpegEmpty();
         }
 
         return ReadHeader(
@@ -145,8 +146,7 @@ public sealed class TurboJpegDecoder : IDisposable
         var plan = CreatePlan(jpeg, options, includeDensity: true);
         if (destination.Length < plan.TotalSize)
         {
-            throw new ArgumentException(
-                $"The destination must be at least {plan.TotalSize} bytes long.", nameof(destination));
+            ThrowHelper.ThrowDestinationTooSmall(plan.TotalSize);
         }
 
         DecodeWithPlan(jpeg, options, in plan, destination[..plan.TotalSize]);
@@ -198,7 +198,7 @@ public sealed class TurboJpegDecoder : IDisposable
     {
         if (jpeg.IsEmpty)
         {
-            throw new ArgumentException("JPEG data must not be empty.", nameof(jpeg));
+            ThrowHelper.ThrowJpegEmpty();
         }
 
         var includeLossless = options.ScalingFactor != TurboJpegScalingFactor.One;
@@ -206,8 +206,7 @@ public sealed class TurboJpegDecoder : IDisposable
             jpeg, includeDensity, includeSubsampling: false, includeLossless);
         if (!info.CanDecodeToBmp)
         {
-            throw new TurboJpegUnsupportedException(
-                $"Cannot decode a JPEG with {info.Precision}-bit precision and {info.Colorspace} colorspace to BMP.");
+            ThrowHelper.ThrowCannotDecodeToBmp(info.Precision, info.Colorspace);
         }
 
         ValidateScalingFactor(info, options);
@@ -226,27 +225,32 @@ public sealed class TurboJpegDecoder : IDisposable
 
         if (options.MaxPixels > 0 && (long)info.Width * info.Height > options.MaxPixels)
         {
-            throw new TurboJpegImageTooLargeException(
-                $"The source image ({info.Width}x{info.Height}) contains " +
-                $"{(long)info.Width * info.Height} pixels, " +
-                $"which exceeds the configured maximum of {options.MaxPixels} pixels.");
+            ThrowHelper.ThrowSourceImageTooLarge(info.Width, info.Height, options.MaxPixels);
         }
 
         var total = BmpHeaderWriter.GetFileSize(outputWidth, outputHeight, bitDepth);
         if (total > Array.MaxLength)
         {
-            throw new TurboJpegImageTooLargeException(
-                $"The decoded image ({outputWidth}x{outputHeight}) requires {total} bytes, " +
-                $"which exceeds the maximum array length of {Array.MaxLength} bytes.");
+            ThrowHelper.ThrowDecodedImageTooLarge(outputWidth, outputHeight, total);
         }
 
-        var pixelFormat = bitDepth switch
+        int pixelFormat;
+        switch (bitDepth)
         {
-            TurboJpegBmpBitDepth.Bpp8 => TurboJpegNative.PixelFormatGray,
-            TurboJpegBmpBitDepth.Bpp24 => TurboJpegNative.PixelFormatBgr,
-            TurboJpegBmpBitDepth.Bpp32 => TurboJpegNative.PixelFormatBgra,
-            _ => throw new ArgumentOutOfRangeException(nameof(options), bitDepth, null)
-        };
+            case TurboJpegBmpBitDepth.Bpp8:
+                pixelFormat = TurboJpegNative.PixelFormatGray;
+                break;
+            case TurboJpegBmpBitDepth.Bpp24:
+                pixelFormat = TurboJpegNative.PixelFormatBgr;
+                break;
+            case TurboJpegBmpBitDepth.Bpp32:
+                pixelFormat = TurboJpegNative.PixelFormatBgra;
+                break;
+            default:
+                ThrowHelper.ThrowBmpBitDepthOutOfRange(nameof(options), bitDepth, null);
+                pixelFormat = default;
+                break;
+        }
 
         var pixelsPerMeterX = BmpHeaderWriter.ToPixelsPerMeter(info.DensityX, info.DensityUnits);
         var pixelsPerMeterY = BmpHeaderWriter.ToPixelsPerMeter(info.DensityY, info.DensityUnits);
@@ -429,7 +433,7 @@ public sealed class TurboJpegDecoder : IDisposable
                     pitch,
                     pixelFormat) != 0)
             {
-                throw TurboJpegNative.CreateException(handle);
+                ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
             }
         }
     }
@@ -450,7 +454,7 @@ public sealed class TurboJpegDecoder : IDisposable
         var safeHandle = _handle;
         if (safeHandle is null)
         {
-            throw new ObjectDisposedException(nameof(TurboJpegDecoder));
+            ThrowHelper.ThrowDisposed();
         }
 
         var handle = safeHandle.DangerousGetHandle();
@@ -461,7 +465,7 @@ public sealed class TurboJpegDecoder : IDisposable
             {
                 if (TurboJpegNative.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0)
                 {
-                    throw TurboJpegNative.CreateException(handle);
+                    ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
                 }
             }
 
@@ -487,7 +491,7 @@ public sealed class TurboJpegDecoder : IDisposable
 
             if (width <= 0 || height <= 0)
             {
-                throw new TurboJpegException($"TurboJPEG reported invalid image dimensions {width}x{height}.");
+                ThrowHelper.ThrowInvalidImageDimensions(width, height);
             }
 
             return new TurboJpegImageInfo(
@@ -537,7 +541,7 @@ public sealed class TurboJpegDecoder : IDisposable
     {
         if (_handle is null)
         {
-            throw new ObjectDisposedException(nameof(TurboJpegDecoder));
+            ThrowHelper.ThrowDisposed();
         }
     }
 
@@ -547,25 +551,18 @@ public sealed class TurboJpegDecoder : IDisposable
 
         if (factor.Numerator <= 0 || factor.Denominator <= 0)
         {
-            throw new ArgumentException(
-                $"The scaling factor {factor.Numerator}/{factor.Denominator} must have " +
-                "a positive numerator and denominator.",
-                nameof(options));
+            ThrowHelper.ThrowScalingFactorNotPositive(factor.Numerator, factor.Denominator);
         }
 
         if (Array.IndexOf(TurboJpegNative.GetSupportedScalingFactors(), factor) < 0)
         {
-            throw new ArgumentException(
-                $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported by TurboJPEG.",
-                nameof(options));
+            ThrowHelper.ThrowScalingFactorUnsupported(factor.Numerator, factor.Denominator);
         }
 
         if (info.IsLossless && factor != TurboJpegScalingFactor.One)
         {
-            throw new ArgumentException(
-                $"The scaling factor {factor.Numerator}/{factor.Denominator} is not supported " +
-                "for lossless JPEG images; use 1/1.",
-                nameof(options));
+            ThrowHelper.ThrowScalingFactorUnsupportedForLossless(
+                factor.Numerator, factor.Denominator);
         }
     }
 
@@ -574,8 +571,7 @@ public sealed class TurboJpegDecoder : IDisposable
         var scaled = ((long)dimension * factor.Numerator + factor.Denominator - 1) / factor.Denominator;
         if (scaled > int.MaxValue)
         {
-            throw new TurboJpegImageTooLargeException(
-                $"The scaled image dimension {scaled} exceeds the maximum supported dimension of {int.MaxValue}.");
+            ThrowHelper.ThrowScaledDimensionTooLarge(scaled);
         }
 
         return (int)scaled;
@@ -608,7 +604,7 @@ public sealed class TurboJpegDecoder : IDisposable
                     Denominator = factor.Denominator,
                 }) != 0)
         {
-            throw TurboJpegNative.CreateException(handle);
+            ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
         }
 
         _appliedScalingFactor = factor;
@@ -618,7 +614,7 @@ public sealed class TurboJpegDecoder : IDisposable
     {
         if (TurboJpegNative.Set(handle, parameter, value) != 0)
         {
-            throw TurboJpegNative.CreateException(handle);
+            ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
         }
     }
 }

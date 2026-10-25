@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using TurboJpegWrapper.Internal;
 
 namespace TurboJpegWrapper.Internal.Native;
 
@@ -47,16 +48,14 @@ internal static class TurboJpegNativeLoader
             }
             catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
             {
-                throw TurboJpegNative.CreateLoadException(ex, overridePath);
+                ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex, overridePath));
             }
         }
 
         var os = GetCurrentPlatform();
         if (GetRuntimeIdentifier(os, RuntimeInformation.ProcessArchitecture) is null)
         {
-            throw new PlatformNotSupportedException(
-                $"TurboJPEG native library loading is not supported on {os} with architecture " +
-                $"{RuntimeInformation.ProcessArchitecture}. Set {OverrideEnvironmentVariable} to an explicit library path.");
+            ThrowHelper.ThrowNativeLoadingUnsupported(os, RuntimeInformation.ProcessArchitecture);
         }
 
         var attempts = new List<string>();
@@ -91,12 +90,8 @@ internal static class TurboJpegNativeLoader
             lastFailure = ex;
         }
 
-        throw new TurboJpegException(
-            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, " +
-            $"TurboJPEG API version {TurboJpegNative.ApiVersion}). " +
-            $"Attempts: {string.Join("; ", attempts)}. " +
-            $"Set {OverrideEnvironmentVariable} to an explicit library path.",
-            lastFailure!);
+        ThrowHelper.ThrowNativeLoadFailed(attempts, lastFailure!);
+        return nint.Zero;
     }
 
     internal static string? GetRuntimeIdentifier(OSPlatform os, Architecture architecture)
@@ -151,7 +146,8 @@ internal static class TurboJpegNativeLoader
             return "libturbojpeg.dylib";
         }
 
-        throw new PlatformNotSupportedException($"The TurboJPEG native library file name is not known for OS '{os}'.");
+        ThrowHelper.ThrowLibraryFileNameUnknown(os);
+        return null!;
     }
 
     internal static IReadOnlyList<string> GetCandidatePaths()
@@ -188,7 +184,7 @@ internal static class TurboJpegNativeLoader
             return OSPlatform.OSX;
         }
 
-        throw new PlatformNotSupportedException(
-            "TurboJPEG native library loading is supported only on Windows, Linux, and macOS.");
+        ThrowHelper.ThrowPlatformUnsupported();
+        return default;
     }
 }
