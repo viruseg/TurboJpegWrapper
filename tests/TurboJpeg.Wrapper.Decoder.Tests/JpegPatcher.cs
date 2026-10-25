@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 internal static class JpegPatcher
 {

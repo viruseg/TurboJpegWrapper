@@ -2,7 +2,7 @@
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Processing;
 
-namespace TurboJpeg.Wrapper.Decoder.Benchmark;
+namespace TurboJpegWrapper.Decoder.Benchmark;
 
 public static class ImgConverterImageSharp
 {

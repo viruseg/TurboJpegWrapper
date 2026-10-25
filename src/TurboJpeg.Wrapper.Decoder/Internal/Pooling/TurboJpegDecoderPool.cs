@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal.Pooling;
+namespace TurboJpegWrapper.Decoder.Internal.Pooling;
 
 internal sealed class TurboJpegDecoderPool
 {

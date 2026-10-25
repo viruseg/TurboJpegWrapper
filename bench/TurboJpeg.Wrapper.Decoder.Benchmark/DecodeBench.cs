@@ -1,6 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 
-namespace TurboJpeg.Wrapper.Decoder.Benchmark;
+namespace TurboJpegWrapper.Decoder.Benchmark;
 
 [MemoryDiagnoser]
 public class DecodeBench

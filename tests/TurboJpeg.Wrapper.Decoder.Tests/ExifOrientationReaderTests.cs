@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
-using TurboJpeg.Wrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Decoder.Internal.Exif;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class ExifOrientationReaderTests
 {

@@ -3,10 +3,10 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using TurboJpeg.Wrapper.Decoder.Internal;
-using TurboJpeg.Wrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Decoder.Internal;
+using TurboJpegWrapper.Decoder.Internal.Exif;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal.Bmp;
+namespace TurboJpegWrapper.Decoder.Internal.Bmp;
 
 internal static class BmpOrientationWriter
 {

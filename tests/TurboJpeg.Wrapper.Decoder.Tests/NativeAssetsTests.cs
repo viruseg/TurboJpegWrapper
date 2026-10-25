@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class NativeAssetsTests
 {

@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder.Internal.Exif;
+namespace TurboJpegWrapper.Decoder.Internal.Exif;
 
 internal enum ExifOrientation
 {

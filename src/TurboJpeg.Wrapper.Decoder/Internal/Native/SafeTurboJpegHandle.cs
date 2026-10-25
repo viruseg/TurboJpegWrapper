@@ -1,6 +1,6 @@
 using Microsoft.Win32.SafeHandles;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal.Native;
+namespace TurboJpegWrapper.Decoder.Internal.Native;
 
 internal sealed class SafeTurboJpegHandle : SafeHandleZeroOrMinusOneIsInvalid
 {

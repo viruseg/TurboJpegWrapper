@@ -1,11 +1,11 @@
 using System.Buffers.Binary;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using TurboJpeg.Wrapper.Decoder;
-using TurboJpeg.Wrapper.Decoder.Internal.Bmp;
-using TurboJpeg.Wrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Decoder;
+using TurboJpegWrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder.Internal.Native;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class DecodeToBmpTests
 {

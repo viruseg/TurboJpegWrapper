@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Color spaces reported by TurboJPEG for a JPEG image.</summary>
 public enum TurboJpegColorspace

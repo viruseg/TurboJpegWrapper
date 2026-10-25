@@ -1,7 +1,7 @@
-using TurboJpeg.Wrapper.Decoder;
-using TurboJpeg.Wrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder;
+using TurboJpegWrapper.Decoder.Internal.Bmp;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class DensityTests
 {

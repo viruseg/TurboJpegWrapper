@@ -1,7 +1,7 @@
-using TurboJpeg.Wrapper.Decoder.Internal.Bmp;
-using TurboJpeg.Wrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder.Internal.Exif;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class BmpOrientationWriterTests
 {

@@ -1,10 +1,10 @@
 using System.Buffers;
-using TurboJpeg.Wrapper.Decoder.Internal;
-using TurboJpeg.Wrapper.Decoder.Internal.Bmp;
-using TurboJpeg.Wrapper.Decoder.Internal.Exif;
-using TurboJpeg.Wrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Decoder.Internal;
+using TurboJpegWrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Decoder.Internal.Native;
 
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Decodes JPEG images with libjpeg-turbo.</summary>
 /// <remarks>

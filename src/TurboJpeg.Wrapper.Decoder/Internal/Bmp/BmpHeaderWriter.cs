@@ -1,9 +1,9 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using TurboJpeg.Wrapper.Decoder.Internal;
+using TurboJpegWrapper.Decoder.Internal;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal.Bmp;
+namespace TurboJpegWrapper.Decoder.Internal.Bmp;
 
 internal static class BmpHeaderWriter
 {

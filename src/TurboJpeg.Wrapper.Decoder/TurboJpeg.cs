@@ -1,8 +1,8 @@
-using TurboJpeg.Wrapper.Decoder.Internal;
-using TurboJpeg.Wrapper.Decoder.Internal.Native;
-using TurboJpeg.Wrapper.Decoder.Internal.Pooling;
+using TurboJpegWrapper.Decoder.Internal;
+using TurboJpegWrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Decoder.Internal.Pooling;
 
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Provides static access to TurboJPEG operations.</summary>
 public static class TurboJpeg

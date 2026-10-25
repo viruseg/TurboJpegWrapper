@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using TurboJpeg.Wrapper.Decoder.Internal;
+using TurboJpegWrapper.Decoder.Internal;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal.Native;
+namespace TurboJpegWrapper.Decoder.Internal.Native;
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct TjScalingFactor

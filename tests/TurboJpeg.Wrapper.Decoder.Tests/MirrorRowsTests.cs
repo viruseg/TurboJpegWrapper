@@ -1,6 +1,6 @@
-using TurboJpeg.Wrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder.Internal.Bmp;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class MirrorRowsTests
 {

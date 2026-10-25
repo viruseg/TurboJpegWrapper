@@ -1,6 +1,6 @@
-using TurboJpeg.Wrapper.Decoder;
+using TurboJpegWrapper.Decoder;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class SpanDecodeTests
 {

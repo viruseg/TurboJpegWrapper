@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Represents an error reported by the TurboJPEG native library.</summary>
 public class TurboJpegException : Exception

@@ -2,10 +2,10 @@ using System.Buffers.Binary;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
-using TurboJpeg.Wrapper.Decoder;
-using TurboJpeg.Wrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder;
+using TurboJpegWrapper.Decoder.Internal.Bmp;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class BmpBitDepthTests
 {

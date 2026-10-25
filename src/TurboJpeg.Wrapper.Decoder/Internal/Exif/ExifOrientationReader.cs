@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal.Exif;
+namespace TurboJpegWrapper.Decoder.Internal.Exif;
 
 internal static class ExifOrientationReader
 {

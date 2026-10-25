@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using TurboJpeg.Wrapper.Decoder.Internal.Exif;
-using TurboJpeg.Wrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Decoder.Internal.Native;
 
-namespace TurboJpeg.Wrapper.Decoder.Internal;
+namespace TurboJpegWrapper.Decoder.Internal;
 
 [StackTraceHidden]
 internal static class ThrowHelper

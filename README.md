@@ -13,7 +13,7 @@ The library is decode-only. It does not encode JPEGs or expose YUV buffers. Turb
 ## Quick start
 
 ```csharp
-using TurboJpeg.Wrapper.Decoder;
+using TurboJpegWrapper.Decoder;
 
 byte[] jpeg = File.ReadAllBytes("photo.jpg");
 byte[] bmp = TurboJpeg.DecodeToBmp(jpeg);
@@ -59,7 +59,7 @@ int written = TurboJpeg.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer
 Use an instance when you want to keep one native handle on a thread. Instances are not thread-safe.
 
 ```csharp
-using TurboJpeg.Wrapper.Decoder;
+using TurboJpegWrapper.Decoder;
 
 using var decoder = new TurboJpegDecoder();
 byte[] bmp = decoder.DecodeToBmp(jpeg);

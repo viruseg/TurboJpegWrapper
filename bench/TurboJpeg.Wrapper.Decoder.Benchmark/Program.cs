@@ -1,5 +1,5 @@
 ﻿using BenchmarkDotNet.Running;
-using TurboJpeg.Wrapper.Decoder.Benchmark;
+using TurboJpegWrapper.Decoder.Benchmark;
 
 string jpegPath;
 try

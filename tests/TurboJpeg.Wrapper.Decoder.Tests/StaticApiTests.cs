@@ -1,7 +1,7 @@
-using TurboJpeg.Wrapper.Decoder;
-using TurboJpeg.Wrapper.Decoder.Internal.Pooling;
+using TurboJpegWrapper.Decoder;
+using TurboJpegWrapper.Decoder.Internal.Pooling;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class StaticApiTests
 {

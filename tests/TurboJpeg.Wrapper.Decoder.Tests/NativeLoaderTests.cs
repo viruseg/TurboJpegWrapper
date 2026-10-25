@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
-using TurboJpeg.Wrapper.Decoder;
-using TurboJpeg.Wrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Decoder;
+using TurboJpegWrapper.Decoder.Internal.Native;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class NativeLoaderTests
 {

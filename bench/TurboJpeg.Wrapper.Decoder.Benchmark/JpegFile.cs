@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder.Benchmark;
+namespace TurboJpegWrapper.Decoder.Benchmark;
 
 internal static class JpegFile
 {

@@ -1,9 +1,9 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
-using TurboJpeg.Wrapper.Decoder;
+using TurboJpegWrapper.Decoder;
 
-namespace TurboJpeg.Wrapper.Decoder.Tests;
+namespace TurboJpegWrapper.Decoder.Tests;
 
 public sealed class AutoOrientTests
 {

@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Represents a TurboJPEG scaling factor as a numerator/denominator pair.</summary>
 /// <remarks>Both components must be positive; <see langword="default"/> (0/0) is not a valid scaling factor.</remarks>

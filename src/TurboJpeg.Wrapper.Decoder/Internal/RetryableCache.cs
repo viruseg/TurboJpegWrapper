@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder.Internal;
+namespace TurboJpegWrapper.Decoder.Internal;
 
 internal sealed class RetryableCache<T> where T : class
 {

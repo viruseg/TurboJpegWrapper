@@ -1,4 +1,4 @@
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Describes the dimensions and encoding format of a JPEG image.</summary>
 /// <param name="Width">Image width in pixels.</param>

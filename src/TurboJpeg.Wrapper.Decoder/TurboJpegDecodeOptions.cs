@@ -1,6 +1,6 @@
-using TurboJpeg.Wrapper.Decoder.Internal;
+using TurboJpegWrapper.Decoder.Internal;
 
-namespace TurboJpeg.Wrapper.Decoder;
+namespace TurboJpegWrapper.Decoder;
 
 /// <summary>Immutable options that control JPEG decoding.</summary>
 public sealed record TurboJpegDecodeOptions

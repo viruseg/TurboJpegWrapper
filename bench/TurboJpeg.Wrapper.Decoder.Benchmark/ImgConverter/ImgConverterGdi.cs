@@ -2,7 +2,7 @@
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 
-namespace TurboJpeg.Wrapper.Decoder.Benchmark;
+namespace TurboJpegWrapper.Decoder.Benchmark;
 
 public static class ImgConverterGdi
 {
