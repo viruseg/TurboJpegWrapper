@@ -196,7 +196,7 @@ The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-
 Build all six packages with:
 
 ```bash
-bash .github/scripts/pack-packages.sh
+bash scripts/pack-packages.sh
 ```
 
 The script writes to `artifacts/packages` and produces version `3.2.0-pre.1`, which comes from `Directory.Build.props`:

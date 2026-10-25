@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 output="${1:-$repo_root/artifacts/packages}"
 version="$(dotnet msbuild src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj -getProperty:Version -nologo)"

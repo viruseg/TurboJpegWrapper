@@ -14,7 +14,7 @@ case "$rid" in
   osx-x64|osx-arm64) native_file="libturbojpeg.dylib" ;;
   *) echo "unsupported rid: $rid" >&2; exit 2 ;;
 esac
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 feed="$repo_root/artifacts/packages"
