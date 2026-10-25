@@ -2,7 +2,7 @@
 
 A production-oriented .NET 10 wrapper around the libjpeg-turbo TurboJPEG API for decoding JPEG images to complete 8-, 24-, or 32-bit BMP files.
 
-The library is decode-only. It does not encode JPEGs, expose YUV buffers, or require an intermediate pixel buffer: TurboJPEG writes grayscale, BGR, or BGRA pixels directly into the final BMP allocation.
+The library is decode-only. It does not encode JPEGs or expose YUV buffers. TurboJPEG writes grayscale, BGR, or BGRA pixels directly into the final BMP allocation. With EXIF auto-orientation, mirror and 180-degree orientations are applied in place; only the four axis-swapping orientations need a temporary decoded-size buffer.
 
 ## Requirements
 
@@ -23,6 +23,11 @@ byte[] bmp24 = TurboJpeg.DecodeToBmp(
     jpeg,
     new TurboJpegDecodeOptions(bmpBitDepth: TurboJpegBmpBitDepth.Bpp24));
 File.WriteAllBytes("photo-24.bmp", bmp24);
+
+byte[] upright = TurboJpeg.DecodeToBmp(
+    jpeg,
+    new TurboJpegDecodeOptions(autoOrient: true));
+File.WriteAllBytes("photo-upright.bmp", upright);
 ```
 
 The result is a complete BMP file, not raw pixels.
@@ -74,8 +79,11 @@ the decoder becomes disposed and the original exception is rethrown.
 | `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations surface as `TurboJpegException`. |
 | `ScanLimit` | `500` | Maximum number of progressive scans; `0` means no limit. |
 | `BmpBitDepth` | `Bpp32` | BMP output depth: `Bpp8` (grayscale plus 256-entry palette), `Bpp24` (BGR), or `Bpp32` (BGRA). |
+| `AutoOrient` | `false` | Applies the EXIF orientation stored in the JPEG, so the BMP is upright. Orientations that swap the axes also transpose the BMP width and height. |
 
 `MaxPixels` and the maximum array length are checked before the BMP buffer is allocated. A smaller scaling factor does not relax the source-pixel limit.
+
+`MaxMemoryMegabytes` limits native TurboJPEG allocations only. The returned BMP array and, for orientations 5-8, the managed auto-orient scratch buffer are not counted against it.
 
 ## BMP output
 
@@ -87,6 +95,7 @@ the decoder becomes disposed and the original exception is rethrown.
 - Rows are padded to a 4-byte boundary: `stride = (width * bytesPerPixel + 3) & ~3`. Padding bytes are zero; 32-bit rows need no padding.
 - Pixel data starts at 54 bytes for 24/32 bpp and at 1078 bytes for 8 bpp.
 - `biSizeImage` is `stride * height`; the file size is `pixelOffset + stride * height`.
+- With `AutoOrient`, the header describes the upright image; orientations 5-8 transpose the width and height.
 
 ## Supported inputs
 
@@ -100,7 +109,9 @@ The following are rejected with `TurboJpegUnsupportedException`:
 - 12-bit and other non-8-bit JPEG precision.
 - CMYK and YCCK JPEG.
 
-The wrapper does not apply EXIF orientation and does not perform ICC color management. Decoded dimensions are the stored JPEG dimensions.
+The wrapper does not perform ICC color management. Without `AutoOrient`, decoded dimensions are the stored JPEG dimensions.
+
+With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segment is applied. All eight EXIF orientation values are supported, so the result may be rotated or mirrored. Missing, malformed, or out-of-range EXIF orientation is ignored and the image is decoded unchanged; malformed metadata never fails decoding. EXIF is read from the JPEG bytes before decoding, so no additional native metadata API is used.
 
 ## Errors
 
@@ -130,7 +141,7 @@ The resolver knows these runtime identifiers: `win-x64`, `win-x86`, `win-arm64`,
 
 - `TurboJpeg` is safe for concurrent use; each operation rents an exclusive decoder and returns it afterward.
 - `TurboJpegDecoder` owns one native handle and is not thread-safe. Use one instance per thread or synchronize access.
-- Decoding writes directly into the final BMP buffer for the selected depth. There is no intermediate full-image copy.
+- Decoding writes directly into the final BMP buffer for the selected depth. With `AutoOrient`, orientations 1-4 decode directly into the BMP and are mirrored in place when needed; orientations 5-8 rent a decoded-size scratch buffer from the shared array pool and transpose it into the BMP.
 - Supported scaling factors are cached after the first successful query.
 
 ## Packaging

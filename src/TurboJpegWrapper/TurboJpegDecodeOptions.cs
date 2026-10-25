@@ -11,9 +11,13 @@ public sealed class TurboJpegDecodeOptions
     /// <param name="fastDct">Whether to use the fastest DCT/IDCT algorithm.</param>
     /// <param name="fastUpsampling">Whether to use the fastest chroma upsampling algorithm.</param>
     /// <param name="maxPixels">The maximum number of source pixels; 0 means no limit.</param>
-    /// <param name="maxMemoryMegabytes">The maximum intermediate memory in megabytes; 0 means no limit.</param>
+    /// <param name="maxMemoryMegabytes">The maximum native intermediate memory in megabytes; 0 means no limit.</param>
     /// <param name="scanLimit">The maximum number of progressive scans; 0 means no limit.</param>
     /// <param name="bmpBitDepth">The BMP output bit depth.</param>
+    /// <param name="autoOrient">
+    /// Whether to apply the orientation stored in the JPEG EXIF metadata to the BMP; the default is
+    /// <see langword="false"/>.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// A limit is negative, the scaling factor numerator or denominator is not positive,
     /// or the BMP bit depth is not 8, 24, or 32.
@@ -25,7 +29,8 @@ public sealed class TurboJpegDecodeOptions
         int maxPixels = 100_000_000,
         int maxMemoryMegabytes = 0,
         int scanLimit = 500,
-        TurboJpegBmpBitDepth bmpBitDepth = TurboJpegBmpBitDepth.Bpp32)
+        TurboJpegBmpBitDepth bmpBitDepth = TurboJpegBmpBitDepth.Bpp32,
+        bool autoOrient = false)
     {
         var scaling = scalingFactor ?? TurboJpegScalingFactor.One;
 
@@ -74,6 +79,7 @@ public sealed class TurboJpegDecodeOptions
         MaxMemoryMegabytes = maxMemoryMegabytes;
         ScanLimit = scanLimit;
         BmpBitDepth = bmpBitDepth;
+        AutoOrient = autoOrient;
     }
 
     /// <summary>Gets the output scaling factor.</summary>
@@ -88,7 +94,11 @@ public sealed class TurboJpegDecodeOptions
     /// <summary>Gets the maximum number of source pixels; 0 means no limit.</summary>
     public int MaxPixels { get; }
 
-    /// <summary>Gets the maximum intermediate memory in megabytes; 0 means no limit.</summary>
+    /// <summary>Gets the maximum native intermediate memory in megabytes; 0 means no limit.</summary>
+    /// <remarks>
+    /// The limit covers native TurboJPEG allocations. The returned BMP array and the auto-orient
+    /// scratch buffer are managed and are not counted against it.
+    /// </remarks>
     public int MaxMemoryMegabytes { get; }
 
     /// <summary>Gets the maximum number of progressive scans; 0 means no limit.</summary>
@@ -96,4 +106,11 @@ public sealed class TurboJpegDecodeOptions
 
     /// <summary>Gets the BMP output bit depth.</summary>
     public TurboJpegBmpBitDepth BmpBitDepth { get; }
+
+    /// <summary>Gets a value indicating whether the EXIF orientation is applied to the BMP.</summary>
+    /// <remarks>
+    /// The default is <see langword="false"/>. Missing, malformed, or out-of-range EXIF orientation
+    /// leaves the image unchanged.
+    /// </remarks>
+    public bool AutoOrient { get; }
 }

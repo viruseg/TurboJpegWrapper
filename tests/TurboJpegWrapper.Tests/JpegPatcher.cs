@@ -91,4 +91,101 @@ internal static class JpegPatcher
 
         throw new InvalidOperationException("The JPEG does not contain a supported SOF marker.");
     }
+
+    internal static byte[] WithExifOrientation(
+        byte[] jpeg, ushort orientation, bool bigEndian = false) =>
+        WithSegment(jpeg, 0xE1, CreateExifPayload(orientation, bigEndian));
+
+    internal static byte[] CreateExifPayload(
+        ushort orientation, bool bigEndian = false, ushort tag = 0x0112)
+    {
+        var payload = new byte[6 + 26];
+        "Exif\0\0"u8.CopyTo(payload);
+        var tiff = payload.AsSpan(6);
+
+        tiff[0] = bigEndian ? (byte)'M' : (byte)'I';
+        tiff[1] = tiff[0];
+
+        WriteUInt16(tiff[2..], 42, bigEndian);
+        WriteUInt32(tiff[4..], 8, bigEndian);
+        WriteUInt16(tiff[8..], 1, bigEndian);
+        WriteUInt16(tiff[10..], tag, bigEndian);
+        WriteUInt16(tiff[12..], 3, bigEndian);
+        WriteUInt32(tiff[14..], 1, bigEndian);
+        WriteUInt16(tiff[18..], orientation, bigEndian);
+        WriteUInt32(tiff[22..], 0, bigEndian);
+
+        return payload;
+    }
+
+    internal static byte[] CreateExifPayloadWithIfdInsideHeader(ushort orientation = 6)
+    {
+        var payload = new byte[6 + 508];
+        "Exif\0\0"u8.CopyTo(payload);
+        var tiff = payload.AsSpan(6);
+
+        tiff[0] = (byte)'I';
+        tiff[1] = (byte)'I';
+        WriteUInt16(tiff[2..], 42, bigEndian: false);
+        WriteUInt32(tiff[4..], 2, bigEndian: false);
+
+        var entry = tiff.Slice(16, 12);
+        WriteUInt16(entry, 0x0112, bigEndian: false);
+        WriteUInt16(entry[2..], 3, bigEndian: false);
+        WriteUInt32(entry[4..], 1, bigEndian: false);
+        WriteUInt16(entry[8..], orientation, bigEndian: false);
+
+        return payload;
+    }
+
+    internal static byte[] WithSegment(byte[] jpeg, byte marker, ReadOnlySpan<byte> payload)
+    {
+        ArgumentNullException.ThrowIfNull(jpeg);
+
+        if (jpeg.Length < 2 || jpeg[0] != 0xFF || jpeg[1] != 0xD8)
+        {
+            throw new ArgumentException("The JPEG must start with an SOI marker.", nameof(jpeg));
+        }
+
+        if (payload.Length + 2 > ushort.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(payload), "The segment payload is too large.");
+        }
+
+        var segment = new byte[payload.Length + 4];
+        segment[0] = 0xFF;
+        segment[1] = marker;
+        BinaryPrimitives.WriteUInt16BigEndian(segment.AsSpan(2), (ushort)(payload.Length + 2));
+        payload.CopyTo(segment.AsSpan(4));
+
+        var result = new byte[jpeg.Length + segment.Length];
+        jpeg.AsSpan(0, 2).CopyTo(result);
+        segment.CopyTo(result.AsSpan(2));
+        jpeg.AsSpan(2).CopyTo(result.AsSpan(2 + segment.Length));
+        return result;
+    }
+
+    private static void WriteUInt16(Span<byte> destination, ushort value, bool bigEndian)
+    {
+        if (bigEndian)
+        {
+            BinaryPrimitives.WriteUInt16BigEndian(destination, value);
+        }
+        else
+        {
+            BinaryPrimitives.WriteUInt16LittleEndian(destination, value);
+        }
+    }
+
+    private static void WriteUInt32(Span<byte> destination, uint value, bool bigEndian)
+    {
+        if (bigEndian)
+        {
+            BinaryPrimitives.WriteUInt32BigEndian(destination, value);
+        }
+        else
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(destination, value);
+        }
+    }
 }

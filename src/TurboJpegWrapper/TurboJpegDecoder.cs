@@ -1,4 +1,6 @@
+using System.Buffers;
 using TurboJpegWrapper.Internal.Bmp;
+using TurboJpegWrapper.Internal.Exif;
 using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper;
@@ -83,6 +85,10 @@ public sealed class TurboJpegDecoder : IDisposable
     /// <param name="jpeg">The complete JPEG file contents.</param>
     /// <param name="options">The decoding options.</param>
     /// <returns>The complete BMP file contents.</returns>
+    /// <remarks>
+    /// When <see cref="TurboJpegDecodeOptions.AutoOrient"/> is enabled, the EXIF orientation is
+    /// applied and the BMP dimensions may be transposed.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="jpeg"/> is empty or the requested scaling factor is not supported.
@@ -119,6 +125,13 @@ public sealed class TurboJpegDecoder : IDisposable
         var width = ScaleDimension(info.Width, factor);
         var height = ScaleDimension(info.Height, factor);
 
+        var orientation = options.AutoOrient
+            ? ExifOrientationReader.Read(jpeg)
+            : ExifOrientation.Normal;
+        var swapsAxes = orientation is >= ExifOrientation.Transpose and <= ExifOrientation.Rotate270;
+        var outputWidth = swapsAxes ? height : width;
+        var outputHeight = swapsAxes ? width : height;
+
         if (options.MaxPixels > 0 && (long)info.Width * info.Height > options.MaxPixels)
         {
             throw new TurboJpegImageTooLargeException(
@@ -127,16 +140,19 @@ public sealed class TurboJpegDecoder : IDisposable
                 $"which exceeds the configured maximum of {options.MaxPixels} pixels.");
         }
 
-        var total = BmpHeaderWriter.GetFileSize(width, height, bitDepth);
+        var total = BmpHeaderWriter.GetFileSize(outputWidth, outputHeight, bitDepth);
         if (total > Array.MaxLength)
         {
             throw new TurboJpegImageTooLargeException(
-                $"The decoded image ({width}x{height}) requires {total} bytes, " +
+                $"The decoded image ({outputWidth}x{outputHeight}) requires {total} bytes, " +
                 $"which exceeds the maximum array length of {Array.MaxLength} bytes.");
         }
 
         var handle = _handle!;
-        ApplyParameter(handle, TurboJpegNative.ParamBottomUp, 1, ref _appliedBottomUp);
+        var bottomUp = orientation is ExifOrientation.Normal or ExifOrientation.FlipHorizontal
+            ? 1
+            : 0;
+        ApplyParameter(handle, TurboJpegNative.ParamBottomUp, bottomUp, ref _appliedBottomUp);
         ApplyParameter(handle, TurboJpegNative.ParamMaxPixels, options.MaxPixels, ref _appliedMaxPixels);
         ApplyParameter(handle, TurboJpegNative.ParamMaxMemory, options.MaxMemoryMegabytes, ref _appliedMaxMemory);
         ApplyParameter(handle, TurboJpegNative.ParamScanLimit, options.ScanLimit, ref _appliedScanLimit);
@@ -149,10 +165,9 @@ public sealed class TurboJpegDecoder : IDisposable
         ApplyScalingFactor(handle, factor);
 
         var bmp = GC.AllocateUninitializedArray<byte>((int)total);
-        BmpHeaderWriter.Write(bmp, width, height, bitDepth);
-        BmpHeaderWriter.ClearPadding(bmp, width, height, bitDepth);
+        BmpHeaderWriter.Write(bmp, outputWidth, outputHeight, bitDepth);
+        BmpHeaderWriter.ClearPadding(bmp, outputWidth, outputHeight, bitDepth);
 
-        var pitch = BmpHeaderWriter.GetRowStride(width, bitDepth);
         var pixelFormat = bitDepth switch
         {
             TurboJpegBmpBitDepth.Bpp8 => TurboJpegNative.PixelFormatGray,
@@ -161,8 +176,61 @@ public sealed class TurboJpegDecoder : IDisposable
             _ => throw new ArgumentOutOfRangeException(nameof(options), bitDepth, null)
         };
 
+        var pixelOffset = BmpHeaderWriter.GetPixelOffset(bitDepth);
+        var bytesPerPixel = BmpHeaderWriter.GetBytesPerPixel(bitDepth);
+        var outputStride = BmpHeaderWriter.GetRowStride(outputWidth, bitDepth);
+
+        if (orientation is ExifOrientation.Normal
+            or ExifOrientation.FlipHorizontal
+            or ExifOrientation.Rotate180
+            or ExifOrientation.FlipVertical)
+        {
+            DecompressInto(handle, jpeg, bmp.AsSpan(pixelOffset), outputStride, pixelFormat);
+
+            if (orientation is ExifOrientation.FlipHorizontal or ExifOrientation.Rotate180)
+            {
+                BmpOrientationWriter.MirrorRowsInPlace(
+                    bmp.AsSpan(pixelOffset), width, height, outputStride, bytesPerPixel);
+            }
+
+            return bmp;
+        }
+
+        var sourcePitch = checked(width * bytesPerPixel);
+        var sourceByteCount = checked(sourcePitch * height);
+        var scratch = ArrayPool<byte>.Shared.Rent(sourceByteCount);
+
+        try
+        {
+            var sourcePixels = scratch.AsSpan(0, sourceByteCount);
+            DecompressInto(handle, jpeg, sourcePixels, sourcePitch, pixelFormat);
+
+            BmpOrientationWriter.Write(
+                bmp.AsSpan(pixelOffset),
+                sourcePixels,
+                width,
+                height,
+                bytesPerPixel,
+                outputStride,
+                orientation);
+
+            return bmp;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(scratch);
+        }
+    }
+
+    private static unsafe void DecompressInto(
+        SafeTurboJpegHandle handle,
+        ReadOnlySpan<byte> jpeg,
+        Span<byte> destination,
+        int pitch,
+        int pixelFormat)
+    {
         fixed (byte* jpegBuf = jpeg)
-        fixed (byte* dstBuf = bmp.AsSpan(BmpHeaderWriter.GetPixelOffset(bitDepth)))
+        fixed (byte* dstBuf = destination)
         {
             if (TurboJpegNative.Decompress8(
                     handle,
@@ -175,8 +243,6 @@ public sealed class TurboJpegDecoder : IDisposable
                 throw TurboJpegNative.CreateException(handle);
             }
         }
-
-        return bmp;
     }
 
     /// <summary>Releases the native TurboJPEG handle.</summary>
