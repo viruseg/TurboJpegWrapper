@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <PackageId>TurboJpeg.Wrapper.Decoder.Native.linux-arm64</PackageId>
+    <Description>TurboJPEG 3.2.0 native library for Linux ARM64, used by TurboJpeg.Wrapper.Decoder.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\..\native\linux-arm64\libturbojpeg.so"
+          Link="runtimes\linux-arm64\native\libturbojpeg.so"
+          CopyToOutputDirectory="PreserveNewest"
+          Pack="true"
+          PackagePath="runtimes\linux-arm64\native\" />
+    <None Include="..\..\..\native\THIRD-PARTY-NOTICES.md"
+          Link="THIRD-PARTY-NOTICES.md"
+          Pack="true"
+          PackagePath="\" />
+  </ItemGroup>
+</Project>

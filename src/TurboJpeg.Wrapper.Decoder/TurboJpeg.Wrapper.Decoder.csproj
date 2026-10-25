@@ -8,41 +8,11 @@
     <IsAotCompatible>true</IsAotCompatible>
     <IsTrimmable>true</IsTrimmable>
     <PackageId>TurboJpeg.Wrapper.Decoder</PackageId>
-    <Description>Production-oriented .NET wrapper for libjpeg-turbo TurboJPEG decoding to BMP.</Description>
+    <Description>Production-oriented .NET wrapper for libjpeg-turbo TurboJPEG decoding to BMP. Native libraries are provided by separate per-platform packages.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\..\native\win-x64\turbojpeg.dll"
-          Link="runtimes\win-x64\native\turbojpeg.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Pack="true"
-          PackagePath="runtimes\win-x64\native\" />
-    <None Include="..\..\native\win-arm64\turbojpeg.dll"
-          Link="runtimes\win-arm64\native\turbojpeg.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Pack="true"
-          PackagePath="runtimes\win-arm64\native\" />
-    <None Include="..\..\native\linux-x64\libturbojpeg.so"
-          Link="runtimes\linux-x64\native\libturbojpeg.so"
-          CopyToOutputDirectory="PreserveNewest"
-          Pack="true"
-          PackagePath="runtimes\linux-x64\native\" />
-    <None Include="..\..\native\linux-arm64\libturbojpeg.so"
-          Link="runtimes\linux-arm64\native\libturbojpeg.so"
-          CopyToOutputDirectory="PreserveNewest"
-          Pack="true"
-          PackagePath="runtimes\linux-arm64\native\" />
-    <None Include="..\..\native\osx-universal\libturbojpeg.dylib"
-          Link="runtimes\osx-x64\native\libturbojpeg.dylib"
-          CopyToOutputDirectory="PreserveNewest"
-          Pack="true"
-          PackagePath="runtimes\osx-x64\native\" />
-    <None Include="..\..\native\osx-universal\libturbojpeg.dylib"
-          Link="runtimes\osx-arm64\native\libturbojpeg.dylib"
-          CopyToOutputDirectory="PreserveNewest"
-          Pack="true"
-          PackagePath="runtimes\osx-arm64\native\" />
     <None Include="..\..\native\THIRD-PARTY-NOTICES.md"
           Link="THIRD-PARTY-NOTICES.md"
           CopyToOutputDirectory="PreserveNewest"

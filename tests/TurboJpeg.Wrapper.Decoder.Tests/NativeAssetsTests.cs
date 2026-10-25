@@ -7,8 +7,7 @@ public sealed class NativeAssetsTests
     [InlineData("win-arm64", "turbojpeg.dll")]
     [InlineData("linux-x64", "libturbojpeg.so")]
     [InlineData("linux-arm64", "libturbojpeg.so")]
-    [InlineData("osx-x64", "libturbojpeg.dylib")]
-    [InlineData("osx-arm64", "libturbojpeg.dylib")]
+    [InlineData("osx", "libturbojpeg.dylib")]
     public void BundledAsset_ExistsInOutput(string rid, string fileName)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "native", fileName);
