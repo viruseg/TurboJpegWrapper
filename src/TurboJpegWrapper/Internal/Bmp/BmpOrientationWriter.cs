@@ -307,8 +307,10 @@ internal static class BmpOrientationWriter
         ref var sourceRef = ref MemoryMarshal.GetReference(source);
         ref var destinationRef = ref MemoryMarshal.GetReference(destination);
         var sourceStride = width * 3;
-        // Keep the last source column scalar; a 4-byte load there would cross the row boundary.
-        var fullWidth = (width - 1) & ~3;
+        // The vector load reads one byte past the last pixel; use the padded fast path when possible.
+        var fullWidth = source.Length >= (long)width * height * 3 + 1
+            ? width & ~3
+            : (width - 1) & ~3;
         var fullHeight = height & ~3;
 
         for (var y0 = 0; y0 < fullHeight; y0 += 4)

@@ -25,6 +25,47 @@ public sealed class BmpOrientationWriterTests
     }
 
     [Theory]
+    [InlineData(4, 5, 0)]
+    [InlineData(4, 5, 4)]
+    [InlineData(8, 7, 0)]
+    [InlineData(8, 7, 4)]
+    [InlineData(12, 3, 0)]
+    [InlineData(12, 3, 4)]
+    [InlineData(16, 9, 0)]
+    [InlineData(16, 9, 4)]
+    [InlineData(32, 5, 0)]
+    [InlineData(32, 5, 4)]
+    [InlineData(64, 7, 0)]
+    [InlineData(64, 7, 4)]
+    public void Write24_PaddedAndUnpaddedSources_MatchReference(
+        int width, int height, int padding)
+    {
+        var sourceByteCount = width * height * 3;
+        var source = new byte[sourceByteCount + padding];
+        for (var i = 0; i < sourceByteCount; i++)
+        {
+            source[i] = (byte)((i * 31) + 7);
+        }
+
+        var destinationStride = ((height * 3) + 3) & ~3;
+        var expected = new byte[destinationStride * width];
+        WriteReference(
+            expected, source, width, height, 3, destinationStride, ExifOrientation.Rotate90);
+
+        var actual = new byte[expected.Length];
+        BmpOrientationWriter.Write(
+            actual,
+            source,
+            width,
+            height,
+            3,
+            destinationStride,
+            ExifOrientation.Rotate90);
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
     [MemberData(nameof(AxesSwappedCases))]
     public void Write_MatchesReference_WithPaddingAndEdges(
         int orientationValue, int bytesPerPixel)

@@ -302,12 +302,14 @@ public sealed class TurboJpegDecoder : IDisposable
 
         var sourcePitch = checked(plan.Width * plan.BytesPerPixel);
         var sourceByteCount = checked(sourcePitch * plan.Height);
-        var scratch = ArrayPool<byte>.Shared.Rent(sourceByteCount);
+        var sourceWithPadding = checked(sourceByteCount + 4);
+        var scratch = ArrayPool<byte>.Shared.Rent(sourceWithPadding);
 
         try
         {
-            var sourcePixels = scratch.AsSpan(0, sourceByteCount);
-            DecompressInto(handle, jpeg, sourcePixels, sourcePitch, plan.PixelFormat);
+            var sourcePixels = scratch.AsSpan(0, sourceWithPadding);
+            DecompressInto(
+                handle, jpeg, sourcePixels[..sourceByteCount], sourcePitch, plan.PixelFormat);
 
             BmpOrientationWriter.Write(
                 bmp[plan.PixelOffset..],
