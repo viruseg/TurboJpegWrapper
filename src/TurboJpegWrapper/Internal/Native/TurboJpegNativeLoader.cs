@@ -103,33 +103,17 @@ internal static class TurboJpegNativeLoader
     {
         if (os == OSPlatform.Windows)
         {
-            return architecture switch
-            {
-                Architecture.X64 => "win-x64",
-                Architecture.X86 => "win-x86",
-                Architecture.Arm64 => "win-arm64",
-                _ => null
-            };
+            return architecture == Architecture.X64 ? "win-x64" : null;
         }
 
         if (os == OSPlatform.Linux)
         {
-            return architecture switch
-            {
-                Architecture.X64 => "linux-x64",
-                Architecture.Arm64 => "linux-arm64",
-                _ => null
-            };
+            return architecture == Architecture.X64 ? "linux-x64" : null;
         }
 
         if (os == OSPlatform.OSX)
         {
-            return architecture switch
-            {
-                Architecture.X64 => "osx-x64",
-                Architecture.Arm64 => "osx-arm64",
-                _ => null
-            };
+            return architecture == Architecture.X64 ? "osx-x64" : null;
         }
 
         return null;
