@@ -1,4 +1,4 @@
-# TurboJpegWrapper
+# TurboJpeg.Wrapper.Decoder
 
 A production-oriented .NET 10 wrapper around the libjpeg-turbo TurboJPEG API for decoding JPEG images to complete 8-, 24-, or 32-bit BMP files.
 
@@ -13,7 +13,7 @@ The library is decode-only. It does not encode JPEGs or expose YUV buffers. Turb
 ## Quick start
 
 ```csharp
-using TurboJpegWrapper;
+using TurboJpeg.Wrapper.Decoder;
 
 byte[] jpeg = File.ReadAllBytes("photo.jpg");
 byte[] bmp = TurboJpeg.DecodeToBmp(jpeg);
@@ -59,7 +59,7 @@ int written = TurboJpeg.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer
 Use an instance when you want to keep one native handle on a thread. Instances are not thread-safe.
 
 ```csharp
-using TurboJpegWrapper;
+using TurboJpeg.Wrapper.Decoder;
 
 using var decoder = new TurboJpegDecoder();
 byte[] bmp = decoder.DecodeToBmp(jpeg);
@@ -175,7 +175,7 @@ The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-
 Build a package with:
 
 ```bash
-dotnet pack src/TurboJpegWrapper/TurboJpegWrapper.csproj -c Release -o artifacts
+dotnet pack src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj -c Release -o artifacts
 ```
 
 The package contains the six native assets listed above, `README.md`, and `THIRD-PARTY-NOTICES.md`.

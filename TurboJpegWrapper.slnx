@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="src/TurboJpegWrapper/TurboJpegWrapper.csproj" />
-  <Project Path="tests/TurboJpegWrapper.Tests/TurboJpegWrapper.Tests.csproj" />
-  <Project Path="bench/TurboJpegWrapper.Benchmark/TurboJpegWrapper.Benchmark.csproj" />
+  <Project Path="src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj" />
+  <Project Path="tests/TurboJpeg.Wrapper.Decoder.Tests/TurboJpeg.Wrapper.Decoder.Tests.csproj" />
+  <Project Path="bench/TurboJpeg.Wrapper.Decoder.Benchmark/TurboJpeg.Wrapper.Decoder.Benchmark.csproj" />
 </Solution>

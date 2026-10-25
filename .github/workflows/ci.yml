@@ -32,4 +32,4 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet test tests/TurboJpegWrapper.Tests/TurboJpegWrapper.Tests.csproj -c Release --nologo
+      - run: dotnet test tests/TurboJpeg.Wrapper.Decoder.Tests/TurboJpeg.Wrapper.Decoder.Tests.csproj -c Release --nologo
