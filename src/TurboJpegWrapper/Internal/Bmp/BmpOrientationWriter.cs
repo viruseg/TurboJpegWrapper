@@ -28,6 +28,44 @@ internal static class BmpOrientationWriter
         7, 8, 9,
         4, 5, 6,
         0, 1, 2, 3);
+    private static readonly Vector128<uint> s_unpackLowIndices = Vector128.Create(0u, 0u, 1u, 1u);
+    private static readonly Vector128<uint> s_unpackHighIndices = Vector128.Create(2u, 2u, 3u, 3u);
+    private static readonly Vector128<uint> s_unpackSelect = Vector128.Create(
+        uint.MaxValue, 0u, uint.MaxValue, 0u);
+    private static readonly Vector128<uint> s_transposeLaneOrder = Vector128.Create(0u, 2u, 1u, 3u);
+
+    private static Vector128<uint> UnpackLow(Vector128<uint> first, Vector128<uint> second) =>
+        Vector128.ConditionalSelect(
+            s_unpackSelect,
+            Vector128.Shuffle(first, s_unpackLowIndices),
+            Vector128.Shuffle(second, s_unpackLowIndices));
+
+    private static Vector128<uint> UnpackHigh(Vector128<uint> first, Vector128<uint> second) =>
+        Vector128.ConditionalSelect(
+            s_unpackSelect,
+            Vector128.Shuffle(first, s_unpackHighIndices),
+            Vector128.Shuffle(second, s_unpackHighIndices));
+
+    private static void Transpose4x4(
+        Vector128<uint> r0,
+        Vector128<uint> r1,
+        Vector128<uint> r2,
+        Vector128<uint> r3,
+        out Vector128<uint> c0,
+        out Vector128<uint> c1,
+        out Vector128<uint> c2,
+        out Vector128<uint> c3)
+    {
+        var t0 = UnpackLow(r0, r1);
+        var t1 = UnpackHigh(r0, r1);
+        var t2 = UnpackLow(r2, r3);
+        var t3 = UnpackHigh(r2, r3);
+
+        c0 = Vector128.Shuffle(UnpackLow(t0, t2), s_transposeLaneOrder);
+        c1 = Vector128.Shuffle(UnpackHigh(t0, t2), s_transposeLaneOrder);
+        c2 = Vector128.Shuffle(UnpackLow(t1, t3), s_transposeLaneOrder);
+        c3 = Vector128.Shuffle(UnpackHigh(t1, t3), s_transposeLaneOrder);
+    }
 
     internal static void Write(
         Span<byte> destination,
@@ -38,13 +76,7 @@ internal static class BmpOrientationWriter
         int destinationStride,
         ExifOrientation orientation)
     {
-        if (orientation is not (ExifOrientation.Transpose
-            or ExifOrientation.Rotate90
-            or ExifOrientation.Transverse
-            or ExifOrientation.Rotate270))
-        {
-            throw new ArgumentOutOfRangeException(nameof(orientation), orientation, null);
-        }
+        ValidateOrientation(orientation);
 
         var bottomUpRow = orientation is ExifOrientation.Transverse or ExifOrientation.Rotate270;
         var leftToRightColumn = orientation is ExifOrientation.Transpose or ExifOrientation.Rotate270;
@@ -55,6 +87,17 @@ internal static class BmpOrientationWriter
                 if (Ssse3.IsSupported)
                 {
                     WriteSimd8(
+                        destination,
+                        source,
+                        width,
+                        height,
+                        destinationStride,
+                        bottomUpRow,
+                        leftToRightColumn);
+                }
+                else if (Vector128.IsHardwareAccelerated)
+                {
+                    WriteVector8(
                         destination,
                         source,
                         width,
@@ -89,6 +132,17 @@ internal static class BmpOrientationWriter
                         bottomUpRow,
                         leftToRightColumn);
                 }
+                else if (Vector128.IsHardwareAccelerated)
+                {
+                    WriteVector24(
+                        destination,
+                        source,
+                        width,
+                        height,
+                        destinationStride,
+                        bottomUpRow,
+                        leftToRightColumn);
+                }
                 else
                 {
                     WriteTiled24(
@@ -115,6 +169,17 @@ internal static class BmpOrientationWriter
                         bottomUpRow,
                         leftToRightColumn);
                 }
+                else if (Vector128.IsHardwareAccelerated)
+                {
+                    WriteVector32(
+                        destination,
+                        source,
+                        width,
+                        height,
+                        destinationStride,
+                        bottomUpRow,
+                        leftToRightColumn);
+                }
                 else
                 {
                     WriteTiled32(
@@ -129,6 +194,69 @@ internal static class BmpOrientationWriter
 
                 break;
 
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(bytesPerPixel), bytesPerPixel, null);
+        }
+    }
+
+    private static void ValidateOrientation(ExifOrientation orientation)
+    {
+        if (orientation is not (ExifOrientation.Transpose
+            or ExifOrientation.Rotate90
+            or ExifOrientation.Transverse
+            or ExifOrientation.Rotate270))
+        {
+            throw new ArgumentOutOfRangeException(nameof(orientation), orientation, null);
+        }
+    }
+
+    internal static void WritePortable(
+        Span<byte> destination,
+        ReadOnlySpan<byte> source,
+        int width,
+        int height,
+        int bytesPerPixel,
+        int destinationStride,
+        ExifOrientation orientation)
+    {
+        ValidateOrientation(orientation);
+
+        var bottomUpRow = orientation is ExifOrientation.Transverse or ExifOrientation.Rotate270;
+        var leftToRightColumn = orientation is ExifOrientation.Transpose or ExifOrientation.Rotate270;
+
+        switch (bytesPerPixel)
+        {
+            case 1:
+                WriteVector8(
+                    destination,
+                    source,
+                    width,
+                    height,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn);
+                break;
+            case 3:
+                WriteVector24(
+                    destination,
+                    source,
+                    width,
+                    height,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn);
+                break;
+            case 4:
+                WriteVector32(
+                    destination,
+                    source,
+                    width,
+                    height,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(
                     nameof(bytesPerPixel), bytesPerPixel, null);
@@ -569,6 +697,273 @@ internal static class BmpOrientationWriter
                 var c1 = Sse2.Shuffle(Sse2.UnpackHigh(t0, t2).AsInt32(), Transpose4x4Shuffle).AsUInt32();
                 var c2 = Sse2.Shuffle(Sse2.UnpackLow(t1, t3).AsInt32(), Transpose4x4Shuffle).AsUInt32();
                 var c3 = Sse2.Shuffle(Sse2.UnpackHigh(t1, t3).AsInt32(), Transpose4x4Shuffle).AsUInt32();
+
+                var destinationColumn = leftToRightColumn ? y0 : height - 4 - y0;
+                var destinationColumnOffset = destinationColumn * 4;
+                var baseRow = bottomUpRow ? x0 : width - 1 - x0;
+                var rowStep = bottomUpRow ? 1 : -1;
+
+                Unsafe.WriteUnaligned(
+                    ref Unsafe.Add(
+                        ref destinationRef,
+                        baseRow * destinationStride + destinationColumnOffset),
+                    c0);
+                Unsafe.WriteUnaligned(
+                    ref Unsafe.Add(
+                        ref destinationRef,
+                        (baseRow + rowStep) * destinationStride + destinationColumnOffset),
+                    c1);
+                Unsafe.WriteUnaligned(
+                    ref Unsafe.Add(
+                        ref destinationRef,
+                        (baseRow + 2 * rowStep) * destinationStride + destinationColumnOffset),
+                    c2);
+                Unsafe.WriteUnaligned(
+                    ref Unsafe.Add(
+                        ref destinationRef,
+                        (baseRow + 3 * rowStep) * destinationStride + destinationColumnOffset),
+                    c3);
+            }
+        }
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = fullWidth; x < width; x++)
+            {
+                WritePixel32(
+                    ref destinationRef,
+                    ref sourceRef,
+                    width,
+                    height,
+                    sourceStride,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn,
+                    x,
+                    y);
+            }
+        }
+
+        for (var y = fullHeight; y < height; y++)
+        {
+            for (var x = 0; x < fullWidth; x++)
+            {
+                WritePixel32(
+                    ref destinationRef,
+                    ref sourceRef,
+                    width,
+                    height,
+                    sourceStride,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn,
+                    x,
+                    y);
+            }
+        }
+    }
+
+    private static void WriteVector8(
+        Span<byte> destination,
+        ReadOnlySpan<byte> source,
+        int width,
+        int height,
+        int destinationStride,
+        bool bottomUpRow,
+        bool leftToRightColumn)
+    {
+        ref var sourceRef = ref MemoryMarshal.GetReference(source);
+        ref var destinationRef = ref MemoryMarshal.GetReference(destination);
+        var sourceStride = width;
+        var fullWidth = width & ~3;
+        var fullHeight = height & ~3;
+
+        for (var y0 = 0; y0 < fullHeight; y0 += 4)
+        {
+            for (var x0 = 0; x0 < fullWidth; x0 += 4)
+            {
+                var firstY = leftToRightColumn ? y0 : y0 + 3;
+                var yStep = leftToRightColumn ? 1 : -1;
+
+                var a = Unsafe.ReadUnaligned<uint>(
+                    ref Unsafe.Add(ref sourceRef, firstY * sourceStride + x0));
+                var b = Unsafe.ReadUnaligned<uint>(
+                    ref Unsafe.Add(ref sourceRef, (firstY + yStep) * sourceStride + x0));
+                var c = Unsafe.ReadUnaligned<uint>(
+                    ref Unsafe.Add(ref sourceRef, (firstY + 2 * yStep) * sourceStride + x0));
+                var d = Unsafe.ReadUnaligned<uint>(
+                    ref Unsafe.Add(ref sourceRef, (firstY + 3 * yStep) * sourceStride + x0));
+
+                var columns = Vector128
+                    .Shuffle(Vector128.Create(a, b, c, d).AsByte(), s_transpose4x4)
+                    .AsUInt32();
+                var destinationColumn = leftToRightColumn ? y0 : height - 4 - y0;
+
+                for (var k = 0; k < 4; k++)
+                {
+                    var destinationRow = bottomUpRow ? x0 + k : width - 1 - (x0 + k);
+                    Unsafe.WriteUnaligned(
+                        ref Unsafe.Add(
+                            ref destinationRef,
+                            destinationRow * destinationStride + destinationColumn),
+                        columns.GetElement(k));
+                }
+            }
+        }
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = fullWidth; x < width; x++)
+            {
+                WritePixel8(
+                    ref destinationRef,
+                    ref sourceRef,
+                    width,
+                    height,
+                    sourceStride,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn,
+                    x,
+                    y);
+            }
+        }
+
+        for (var y = fullHeight; y < height; y++)
+        {
+            for (var x = 0; x < fullWidth; x++)
+            {
+                WritePixel8(
+                    ref destinationRef,
+                    ref sourceRef,
+                    width,
+                    height,
+                    sourceStride,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn,
+                    x,
+                    y);
+            }
+        }
+    }
+
+    private static void WriteVector24(
+        Span<byte> destination,
+        ReadOnlySpan<byte> source,
+        int width,
+        int height,
+        int destinationStride,
+        bool bottomUpRow,
+        bool leftToRightColumn)
+    {
+        ref var sourceRef = ref MemoryMarshal.GetReference(source);
+        ref var destinationRef = ref MemoryMarshal.GetReference(destination);
+        var sourceStride = width * 3;
+        var fullWidth = source.Length >= (long)width * height * 3 + 1
+            ? width & ~3
+            : (width - 1) & ~3;
+        var fullHeight = height & ~3;
+
+        for (var y0 = 0; y0 < fullHeight; y0 += 4)
+        {
+            for (var x0 = 0; x0 < fullWidth; x0 += 4)
+            {
+                var firstY = leftToRightColumn ? y0 : y0 + 3;
+                var yStep = leftToRightColumn ? 1 : -1;
+
+                var r0 = LoadRow24(ref sourceRef, firstY * sourceStride + x0 * 3);
+                var r1 = LoadRow24(ref sourceRef, (firstY + yStep) * sourceStride + x0 * 3);
+                var r2 = LoadRow24(ref sourceRef, (firstY + 2 * yStep) * sourceStride + x0 * 3);
+                var r3 = LoadRow24(ref sourceRef, (firstY + 3 * yStep) * sourceStride + x0 * 3);
+
+                Transpose4x4(r0, r1, r2, r3, out var c0, out var c1, out var c2, out var c3);
+
+                var destinationColumn = leftToRightColumn ? y0 : height - 4 - y0;
+                StoreColumn24(
+                    ref destinationRef, c0, width, bottomUpRow, destinationColumn,
+                    destinationStride, x0);
+                StoreColumn24(
+                    ref destinationRef, c1, width, bottomUpRow, destinationColumn,
+                    destinationStride, x0 + 1);
+                StoreColumn24(
+                    ref destinationRef, c2, width, bottomUpRow, destinationColumn,
+                    destinationStride, x0 + 2);
+                StoreColumn24(
+                    ref destinationRef, c3, width, bottomUpRow, destinationColumn,
+                    destinationStride, x0 + 3);
+            }
+        }
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = fullWidth; x < width; x++)
+            {
+                WritePixel24(
+                    ref destinationRef,
+                    ref sourceRef,
+                    width,
+                    height,
+                    sourceStride,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn,
+                    x,
+                    y);
+            }
+        }
+
+        for (var y = fullHeight; y < height; y++)
+        {
+            for (var x = 0; x < fullWidth; x++)
+            {
+                WritePixel24(
+                    ref destinationRef,
+                    ref sourceRef,
+                    width,
+                    height,
+                    sourceStride,
+                    destinationStride,
+                    bottomUpRow,
+                    leftToRightColumn,
+                    x,
+                    y);
+            }
+        }
+    }
+
+    private static void WriteVector32(
+        Span<byte> destination,
+        ReadOnlySpan<byte> source,
+        int width,
+        int height,
+        int destinationStride,
+        bool bottomUpRow,
+        bool leftToRightColumn)
+    {
+        ref var sourceRef = ref MemoryMarshal.GetReference(source);
+        ref var destinationRef = ref MemoryMarshal.GetReference(destination);
+        var sourceStride = width * 4;
+        var fullWidth = width & ~3;
+        var fullHeight = height & ~3;
+
+        for (var y0 = 0; y0 < fullHeight; y0 += 4)
+        {
+            for (var x0 = 0; x0 < fullWidth; x0 += 4)
+            {
+                var firstY = leftToRightColumn ? y0 : y0 + 3;
+                var yStep = leftToRightColumn ? 1 : -1;
+
+                var r0 = Unsafe.ReadUnaligned<Vector128<uint>>(
+                    ref Unsafe.Add(ref sourceRef, firstY * sourceStride + x0 * 4));
+                var r1 = Unsafe.ReadUnaligned<Vector128<uint>>(
+                    ref Unsafe.Add(ref sourceRef, (firstY + yStep) * sourceStride + x0 * 4));
+                var r2 = Unsafe.ReadUnaligned<Vector128<uint>>(
+                    ref Unsafe.Add(ref sourceRef, (firstY + 2 * yStep) * sourceStride + x0 * 4));
+                var r3 = Unsafe.ReadUnaligned<Vector128<uint>>(
+                    ref Unsafe.Add(ref sourceRef, (firstY + 3 * yStep) * sourceStride + x0 * 4));
+
+                Transpose4x4(r0, r1, r2, r3, out var c0, out var c1, out var c2, out var c3);
 
                 var destinationColumn = leftToRightColumn ? y0 : height - 4 - y0;
                 var destinationColumnOffset = destinationColumn * 4;

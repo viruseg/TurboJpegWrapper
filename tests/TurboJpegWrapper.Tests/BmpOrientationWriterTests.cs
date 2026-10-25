@@ -24,6 +24,73 @@ public sealed class BmpOrientationWriterTests
         }
     }
 
+    public static IEnumerable<object[]> PortableCases()
+    {
+        var sizes = new[] { (4, 7), (8, 7), (9, 5), (16, 7), (17, 3), (35, 23), (64, 5) };
+        foreach (var orientation in new[] { 5, 6, 7, 8 })
+        {
+            foreach (var bytesPerPixel in new[] { 1, 3, 4 })
+            {
+                foreach (var (width, height) in sizes)
+                {
+                    yield return [orientation, bytesPerPixel, width, height];
+                }
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(PortableCases))]
+    public void WritePortable_MatchesReference(
+        int orientationValue, int bytesPerPixel, int width, int height)
+    {
+        var source = new byte[width * height * bytesPerPixel];
+        for (var i = 0; i < source.Length; i++)
+        {
+            source[i] = (byte)((i * 31) + 7);
+        }
+
+        var destinationStride = ((height * bytesPerPixel) + 3) & ~3;
+        var expected = new byte[destinationStride * width];
+        var orientation = (ExifOrientation)orientationValue;
+        WriteReference(
+            expected, source, width, height, bytesPerPixel, destinationStride, orientation);
+
+        var actual = new byte[expected.Length];
+        BmpOrientationWriter.WritePortable(
+            actual, source, width, height, bytesPerPixel, destinationStride, orientation);
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData(4, 5)]
+    [InlineData(8, 7)]
+    [InlineData(12, 3)]
+    [InlineData(16, 9)]
+    [InlineData(32, 5)]
+    [InlineData(64, 7)]
+    public void WritePortable24_PaddedSource_MatchesReference(int width, int height)
+    {
+        var sourceByteCount = width * height * 3;
+        var source = new byte[sourceByteCount + 4];
+        for (var i = 0; i < sourceByteCount; i++)
+        {
+            source[i] = (byte)((i * 31) + 7);
+        }
+
+        var destinationStride = ((height * 3) + 3) & ~3;
+        var expected = new byte[destinationStride * width];
+        WriteReference(
+            expected, source, width, height, 3, destinationStride, ExifOrientation.Rotate90);
+
+        var actual = new byte[expected.Length];
+        BmpOrientationWriter.WritePortable(
+            actual, source, width, height, 3, destinationStride, ExifOrientation.Rotate90);
+
+        Assert.Equal(expected, actual);
+    }
+
     [Theory]
     [InlineData(4, 5, 0)]
     [InlineData(4, 5, 4)]
