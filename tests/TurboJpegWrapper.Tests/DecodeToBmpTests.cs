@@ -268,7 +268,8 @@ public sealed class DecodeToBmpTests
     [Fact]
     public void BmpHeaderWriter_Write_ShortDestination_ThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() => BmpHeaderWriter.Write(new byte[53], 35, 23));
+        Assert.Throws<ArgumentException>(
+            () => BmpHeaderWriter.Write(new byte[53], 35, 23, TurboJpegBmpBitDepth.Bpp32));
     }
 
     [Theory]
@@ -280,7 +281,8 @@ public sealed class DecodeToBmpTests
         int width, int height)
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => BmpHeaderWriter.Write(new byte[BmpTestHelpers.HeaderSize], width, height));
+            () => BmpHeaderWriter.Write(
+                new byte[BmpTestHelpers.HeaderSize], width, height, TurboJpegBmpBitDepth.Bpp32));
     }
 
     private static void AssertValidBmp(byte[] bmp)

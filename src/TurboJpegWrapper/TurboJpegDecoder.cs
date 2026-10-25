@@ -126,7 +126,8 @@ public sealed class TurboJpegDecoder : IDisposable
                 $"which exceeds the configured maximum of {options.MaxPixels} pixels.");
         }
 
-        var total = BmpHeaderWriter.GetFileSize(width, height);
+        var total = BmpHeaderWriter.GetFileSize(
+            width, height, TurboJpegBmpBitDepth.Bpp32);
         if (total > Array.MaxLength)
         {
             throw new TurboJpegImageTooLargeException(
@@ -148,7 +149,11 @@ public sealed class TurboJpegDecoder : IDisposable
         ApplyScalingFactor(handle, factor);
 
         var bmp = GC.AllocateUninitializedArray<byte>((int)total);
-        BmpHeaderWriter.Write(bmp.AsSpan(0, BmpHeaderWriter.HeaderSize), width, height);
+        BmpHeaderWriter.Write(
+            bmp.AsSpan(0, BmpHeaderWriter.GetPixelOffset(TurboJpegBmpBitDepth.Bpp32)),
+            width,
+            height,
+            TurboJpegBmpBitDepth.Bpp32);
 
         var pitch = checked(width * 4);
         fixed (byte* jpegBuf = jpeg)
