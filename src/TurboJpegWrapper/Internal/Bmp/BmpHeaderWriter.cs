@@ -8,6 +8,8 @@ internal static class BmpHeaderWriter
     internal const int GrayscalePaletteSize = 256 * 4;
     internal const int DefaultPixelsPerMeter = 2835;
 
+    private static readonly byte[] s_template = CreateTemplate();
+
     internal static int ToPixelsPerMeter(int density, TurboJpegDensityUnits units)
     {
         if (density <= 0)
@@ -72,41 +74,47 @@ internal static class BmpHeaderWriter
                 $"The destination must be at least {pixelOffset} bytes long.", nameof(destination));
         }
 
-        var stride = GetRowStride(width, bitDepth);
         var fileSize = checked((int)GetFileSize(width, height, bitDepth));
         var imageSize = fileSize - pixelOffset;
         var bitsPerPixel = GetBytesPerPixel(bitDepth) * 8;
+        var templateLength = bitDepth == TurboJpegBmpBitDepth.Bpp8 ? pixelOffset : HeaderSize;
 
-        destination[0] = (byte)'B';
-        destination[1] = (byte)'M';
+        s_template.AsSpan(0, templateLength).CopyTo(destination);
+
         BinaryPrimitives.WriteInt32LittleEndian(destination[2..], fileSize);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[6..], 0);
         BinaryPrimitives.WriteInt32LittleEndian(destination[10..], pixelOffset);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[14..], 40);
         BinaryPrimitives.WriteInt32LittleEndian(destination[18..], width);
         BinaryPrimitives.WriteInt32LittleEndian(destination[22..], height);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[26..], 1);
         BinaryPrimitives.WriteUInt16LittleEndian(destination[28..], (ushort)bitsPerPixel);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[30..], 0);
         BinaryPrimitives.WriteInt32LittleEndian(destination[34..], imageSize);
         BinaryPrimitives.WriteInt32LittleEndian(destination[38..], pixelsPerMeterX);
         BinaryPrimitives.WriteInt32LittleEndian(destination[42..], pixelsPerMeterY);
         BinaryPrimitives.WriteInt32LittleEndian(
             destination[46..], bitDepth == TurboJpegBmpBitDepth.Bpp8 ? 256 : 0);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[50..], 0);
+    }
 
-        if (bitDepth == TurboJpegBmpBitDepth.Bpp8)
+    private static byte[] CreateTemplate()
+    {
+        var template = new byte[HeaderSize + GrayscalePaletteSize];
+        template[0] = (byte)'B';
+        template[1] = (byte)'M';
+        BinaryPrimitives.WriteInt32LittleEndian(template.AsSpan(14), 40);
+        BinaryPrimitives.WriteUInt16LittleEndian(template.AsSpan(26), 1);
+        BinaryPrimitives.WriteInt32LittleEndian(template.AsSpan(38), DefaultPixelsPerMeter);
+        BinaryPrimitives.WriteInt32LittleEndian(template.AsSpan(42), DefaultPixelsPerMeter);
+        BinaryPrimitives.WriteInt32LittleEndian(template.AsSpan(46), 256);
+
+        var palette = template.AsSpan(HeaderSize, GrayscalePaletteSize);
+        for (var i = 0; i < 256; i++)
         {
-            var palette = destination.Slice(HeaderSize, GrayscalePaletteSize);
-            for (var i = 0; i < 256; i++)
-            {
-                var entry = palette.Slice(i * 4, 4);
-                entry[0] = (byte)i;
-                entry[1] = (byte)i;
-                entry[2] = (byte)i;
-                entry[3] = 0;
-            }
+            var entry = palette.Slice(i * 4, 4);
+            entry[0] = (byte)i;
+            entry[1] = (byte)i;
+            entry[2] = (byte)i;
+            entry[3] = 0;
         }
+
+        return template;
     }
 
     internal static void ClearPadding(
