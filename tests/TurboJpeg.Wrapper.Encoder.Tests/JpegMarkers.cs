@@ -66,6 +66,70 @@ internal static class JpegMarkers
         throw new InvalidDataException("The JPEG contains no SOF marker before the SOS marker.");
     }
 
+    /// <summary>Reads the quantisation parameters of the start-of-scan segment.</summary>
+    /// <remarks>
+    /// For lossless JPEG, <c>Ss</c> is the predictor selection value and <c>Al</c> is the
+    /// point transform.
+    /// </remarks>
+    /// <exception cref="InvalidDataException">The JPEG contains no valid SOS segment.</exception>
+    internal static ScanParameters ReadScanParameters(ReadOnlySpan<byte> jpeg)
+    {
+        var offset = 2;
+        while (offset + 1 < jpeg.Length)
+        {
+            if (jpeg[offset] != MarkerPrefix)
+            {
+                offset++;
+                continue;
+            }
+
+            var marker = jpeg[offset + 1];
+            if (marker == MarkerPrefix)
+            {
+                offset++;
+                continue;
+            }
+
+            if (IsStandalone(marker))
+            {
+                offset += 2;
+                continue;
+            }
+
+            if (offset + 5 > jpeg.Length)
+            {
+                break;
+            }
+
+            var segmentLength = BinaryPrimitives.ReadUInt16BigEndian(jpeg.Slice(offset + 2, 2));
+            if (segmentLength < 2)
+            {
+                break;
+            }
+
+            if (marker != StartOfScan)
+            {
+                offset += 2 + segmentLength;
+                continue;
+            }
+
+            var componentCount = jpeg[offset + 4];
+            var parametersOffset = offset + 5 + componentCount * 2;
+            if (segmentLength < 6 + componentCount * 2 ||
+                parametersOffset + 3 > jpeg.Length)
+            {
+                break;
+            }
+
+            var ss = jpeg[parametersOffset];
+            var se = jpeg[parametersOffset + 1];
+            var ahAl = jpeg[parametersOffset + 2];
+            return new ScanParameters(ss, se, (byte)(ahAl >> 4), (byte)(ahAl & 0x0F));
+        }
+
+        throw new InvalidDataException("The JPEG contains no valid SOS segment.");
+    }
+
     /// <summary>Counts restart markers (<c>0xFFD0</c> through <c>0xFFD7</c>).</summary>
     internal static int CountRestartMarkers(ReadOnlySpan<byte> jpeg)
     {
@@ -81,6 +145,9 @@ internal static class JpegMarkers
 
         return count;
     }
+
+    internal readonly record struct ScanParameters(
+        byte Predictor, byte SpectralEnd, byte SuccessiveHigh, byte SuccessiveLow);
 
     private static bool IsStartOfFrame(byte marker) =>
         marker is >= 0xC0 and <= 0xCF

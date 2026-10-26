@@ -1,6 +1,5 @@
 namespace TurboJpegWrapper.Encoder.Internal.Bmp;
 
-/// <summary>Describes the layout of a validated BMP file.</summary>
 internal readonly struct BmpInfo
 {
     internal BmpInfo(
@@ -59,9 +58,7 @@ internal readonly struct BmpInfo
 
     internal uint BlueMask { get; }
 
-    /// <summary>Gets the horizontal density in pixels per metre, as stored in the file.</summary>
     internal int DensityX { get; }
 
-    /// <summary>Gets the vertical density in pixels per metre, as stored in the file.</summary>
     internal int DensityY { get; }
 }

@@ -3,7 +3,6 @@ using System.Numerics;
 
 namespace TurboJpegWrapper.Encoder.Internal.Bmp;
 
-/// <summary>Parses and validates the headers of an uncompressed BMP file.</summary>
 internal static class BmpReader
 {
     private const int FileHeaderSize = 14;

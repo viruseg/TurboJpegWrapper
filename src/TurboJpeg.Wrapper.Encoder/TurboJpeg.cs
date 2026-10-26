@@ -25,6 +25,9 @@ public static class TurboJpeg
     /// The worst-case JPEG size exceeds the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not load or encode the image.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The current OS/architecture is not supported and no explicit native library path is configured.
+    /// </exception>
     public static byte[] EncodeToJpeg(ReadOnlySpan<byte> bmp) =>
         EncodeToJpeg(bmp, TurboJpegEncodeOptions.Default);
 
@@ -34,7 +37,10 @@ public static class TurboJpeg
     /// <returns>The complete JPEG file contents.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, or <paramref name="options"/>
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output.
     /// </exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The BMP uses an encoding that this library does not support.
@@ -43,6 +49,9 @@ public static class TurboJpeg
     /// The worst-case JPEG size exceeds the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not load or encode the image.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The current OS/architecture is not supported and no explicit native library path is configured.
+    /// </exception>
     public static byte[] EncodeToJpeg(ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -75,11 +84,17 @@ public static class TurboJpeg
     /// <remarks>
     /// The required buffer size can be obtained with
     /// <see cref="GetMaxJpegSize(ReadOnlySpan{byte}, TurboJpegEncodeOptions)"/>.
+    /// <paramref name="destination"/> must not overlap <paramref name="bmp"/>, because the
+    /// encoder may read BMP pixels directly from the source while writing JPEG bytes.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty, is not a supported BMP file, or
-    /// <paramref name="destination"/> is too small.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, <paramref name="options"/>
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output,
+    /// <paramref name="destination"/> is too small, or <paramref name="destination"/> overlaps
+    /// <paramref name="bmp"/>.
     /// </exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The BMP uses an encoding that this library does not support.
@@ -88,6 +103,9 @@ public static class TurboJpeg
     /// The worst-case JPEG size exceeds the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not load or encode the image.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The current OS/architecture is not supported and no explicit native library path is configured.
+    /// </exception>
     public static int EncodeToJpeg(
         ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options, Span<byte> destination)
     {
@@ -123,9 +141,12 @@ public static class TurboJpeg
     /// The BMP uses an encoding that this library does not support.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The worst-case JPEG size exceeds the maximum array length.
+    /// TurboJPEG reports a zero worst-case size, or the size exceeds the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not load the library.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The current OS/architecture is not supported and no explicit native library path is configured.
+    /// </exception>
     public static int GetMaxJpegSize(ReadOnlySpan<byte> bmp) =>
         GetMaxJpegSize(bmp, TurboJpegEncodeOptions.Default);
 
@@ -135,15 +156,21 @@ public static class TurboJpeg
     /// <returns>The maximum possible JPEG file size in bytes.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, or <paramref name="options"/>
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output.
     /// </exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The BMP uses an encoding that this library does not support.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The worst-case JPEG size exceeds the maximum array length.
+    /// TurboJPEG reports a zero worst-case size, or the size exceeds the maximum array length.
     /// </exception>
     /// <exception cref="TurboJpegException">TurboJPEG could not load the library.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The current OS/architecture is not supported and no explicit native library path is configured.
+    /// </exception>
     public static int GetMaxJpegSize(ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

@@ -3,8 +3,8 @@ namespace TurboJpegWrapper.Encoder;
 /// <summary>Immutable options that control JPEG encoding.</summary>
 /// <remarks>
 /// Range and enum validation runs when a value is assigned and is unconditional, including
-/// values that lossless mode later ignores. Cross-property rules involving restart markers and
-/// lossless mode are checked when encoding starts.
+/// values that lossless mode later ignores. Cross-property rules involving restart markers,
+/// lossless mode, RGB output, and density are checked when encoding starts.
 /// </remarks>
 public sealed record TurboJpegEncodeOptions
 {
@@ -36,7 +36,12 @@ public sealed record TurboJpegEncodeOptions
     }
 
     /// <summary>Gets the chroma subsampling scheme of the encoded image.</summary>
-    /// <remarks>This option is ignored when <see cref="Lossless"/> is <see langword="true"/>.</remarks>
+    /// <remarks>
+    /// This option is ignored when <see cref="Lossless"/> is <see langword="true"/> and when
+    /// <see cref="Colorspace"/> is <see cref="TurboJpegColorspace.Rgb"/>. RGB output always uses
+    /// 4:4:4; an explicit RGB colorspace takes precedence over
+    /// <see cref="TurboJpegSubsampling.Grayscale"/>.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">
     /// The value is <see cref="TurboJpegSubsampling.Unknown"/> or not a defined subsampling scheme.
     /// </exception>
@@ -58,7 +63,14 @@ public sealed record TurboJpegEncodeOptions
     }
 
     /// <summary>Gets the color space of the encoded image.</summary>
-    /// <remarks>This option is ignored when <see cref="Lossless"/> is <see langword="true"/>.</remarks>
+    /// <remarks>
+    /// <para>This option is ignored when <see cref="Lossless"/> is <see langword="true"/>.</para>
+    /// <para>
+    /// <see cref="TurboJpegColorspace.Rgb"/> output is always encoded with 4:4:4 subsampling
+    /// regardless of <see cref="Subsampling"/>, and RGB output cannot store a pixel density.
+    /// Specifying <see cref="Density"/> together with RGB output is rejected when encoding starts.
+    /// </para>
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is not a defined color space.</exception>
     public TurboJpegColorspace Colorspace
     {
@@ -70,7 +82,10 @@ public sealed record TurboJpegEncodeOptions
                 and not TurboJpegColorspace.YCbCr
                 and not TurboJpegColorspace.Grayscale)
             {
-                throw new ArgumentOutOfRangeException(nameof(Colorspace), value, null);
+                throw new ArgumentOutOfRangeException(
+                    nameof(Colorspace),
+                    value,
+                    "The color space must be Default, Rgb, YCbCr, or Grayscale.");
             }
 
             _colorspace = value;
@@ -96,10 +111,11 @@ public sealed record TurboJpegEncodeOptions
     /// <summary>Gets a value indicating whether lossless JPEG compression is used.</summary>
     /// <remarks>
     /// When this option is <see langword="true"/>, only <see cref="LosslessPredictor"/>,
-    /// <see cref="LosslessPointTransform"/>, <see cref="RestartRows"/>, <see cref="Density"/>,
-    /// <see cref="MaxMemoryMegabytes"/>, and <see cref="StopOnWarning"/> are applied; the lossy
-    /// options are ignored. A non-zero <see cref="RestartBlocks"/> is rejected when encoding
-    /// starts.
+    /// <see cref="LosslessPointTransform"/>, <see cref="RestartRows"/>,
+    /// <see cref="MaxMemoryMegabytes"/>, <see cref="StopOnWarning"/>, and the BMP row order are
+    /// applied; the lossy options are ignored. Lossless output is RGB, so it cannot store a
+    /// pixel density: <see cref="Density"/> must be <see langword="null"/>, and BMP-derived
+    /// density is ignored. A non-zero <see cref="RestartBlocks"/> is rejected when encoding starts.
     /// </remarks>
     public bool Lossless { get; init; } = false;
 
@@ -139,13 +155,17 @@ public sealed record TurboJpegEncodeOptions
     /// This option applies only to lossy compression. A non-zero value cannot be combined with a
     /// non-zero <see cref="RestartRows"/>; that combination is rejected when encoding starts.
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The value is less than 0 or greater than 65535.
+    /// </exception>
     public int RestartBlocks
     {
         get => _restartBlocks;
         init
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value, nameof(RestartBlocks));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(
+                value, 65535, nameof(RestartBlocks));
             _restartBlocks = value;
         }
     }
@@ -155,13 +175,16 @@ public sealed record TurboJpegEncodeOptions
     /// This option applies to lossy and lossless compression. A non-zero value cannot be combined
     /// with a non-zero <see cref="RestartBlocks"/>; that combination is rejected when encoding starts.
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The value is less than 0 or greater than 65535.
+    /// </exception>
     public int RestartRows
     {
         get => _restartRows;
         init
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value, nameof(RestartRows));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 65535, nameof(RestartRows));
             _restartRows = value;
         }
     }
@@ -183,11 +206,22 @@ public sealed record TurboJpegEncodeOptions
 
     /// <summary>Gets the pixel density written to the JPEG header.</summary>
     /// <remarks>
-    /// When this option is <see langword="null"/>, the encoder uses the density stored in the BMP
-    /// when it is non-zero and otherwise applies the native default density.
+    /// <para>
+    /// Density is stored only in lossy YCbCr and grayscale JPEG files. When this option is
+    /// <see langword="null"/>, those modes use the density stored in the BMP when it is non-zero
+    /// and otherwise apply 1 x 1 with <see cref="TurboJpegDensityUnits.Unknown"/> units.
+    /// </para>
+    /// <para>
+    /// Lossless and RGB output cannot store a density. Specifying this option together with
+    /// <see cref="Lossless"/> = <see langword="true"/> or <see cref="Colorspace"/> =
+    /// <see cref="TurboJpegColorspace.Rgb"/> throws <see cref="ArgumentException"/> with
+    /// parameter name <c>options</c> when encoding or sizing starts. BMP-derived density is
+    /// ignored in those modes; 1 x 1 with <see cref="TurboJpegDensityUnits.Unknown"/> units is
+    /// applied instead.
+    /// </para>
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// The assigned density has a non-positive dimension or undefined units.
+    /// The assigned density has a dimension outside 1 through 65535 or undefined units.
     /// </exception>
     public TurboJpegDensity? Density
     {

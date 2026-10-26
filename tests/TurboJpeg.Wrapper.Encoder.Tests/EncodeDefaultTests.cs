@@ -10,6 +10,12 @@ public sealed class EncodeDefaultTests
     private static (byte B, byte G, byte R) Gradient(int x, int y) =>
         ((byte)(x * 7 + y * 3), (byte)(x * 3 + y * 11), (byte)(x * 5 + y * 13));
 
+    private static (byte B, byte G, byte R, byte A) Gradient32(int x, int y)
+    {
+        var (b, g, r) = Gradient(x, y);
+        return (b, g, r, (byte)(x * 5 + y * 9));
+    }
+
     [Fact]
     public void EncodeToJpeg_DefaultOptions_ReportsSourceGeometryAndYuv420()
     {
@@ -71,6 +77,16 @@ public sealed class EncodeDefaultTests
     {
         var bottomUp = BmpBuilder.Create24(35, 23, Gradient);
         var topDown = BmpBuilder.Create24(35, 23, Gradient, topDown: true);
+        using var encoder = new TurboJpegEncoder();
+
+        Assert.Equal(encoder.EncodeToJpeg(bottomUp), encoder.EncodeToJpeg(topDown));
+    }
+
+    [Fact]
+    public void EncodeToJpeg_32BitTopDownAndBottomUpSources_ProduceIdenticalJpeg()
+    {
+        var bottomUp = BmpBuilder.Create32(35, 23, Gradient32);
+        var topDown = BmpBuilder.Create32(35, 23, Gradient32, topDown: true);
         using var encoder = new TurboJpegEncoder();
 
         Assert.Equal(encoder.EncodeToJpeg(bottomUp), encoder.EncodeToJpeg(topDown));

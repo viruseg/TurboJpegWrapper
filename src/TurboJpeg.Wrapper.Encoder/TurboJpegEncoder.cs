@@ -43,6 +43,10 @@ public sealed class TurboJpegEncoder : IDisposable
 
     /// <summary>Initializes a new instance of the <see cref="TurboJpegEncoder"/> class.</summary>
     /// <param name="defaultOptions">Options used when a method does not receive explicit options.</param>
+    /// <exception cref="TurboJpegException">The native TurboJPEG library could not be loaded or initialized.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The current OS/architecture is not supported and no explicit native library path is configured.
+    /// </exception>
     public TurboJpegEncoder(TurboJpegEncodeOptions? defaultOptions = null)
         : this(defaultOptions, TurboJpegNative.CreateEncoderHandle)
     {
@@ -62,7 +66,10 @@ public sealed class TurboJpegEncoder : IDisposable
     /// <param name="bmp">The complete BMP file contents.</param>
     /// <returns>The complete JPEG file contents.</returns>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, or the default options
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
@@ -80,7 +87,10 @@ public sealed class TurboJpegEncoder : IDisposable
     /// <returns>The complete JPEG file contents.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, or <paramref name="options"/>
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
@@ -125,11 +135,17 @@ public sealed class TurboJpegEncoder : IDisposable
     /// <remarks>
     /// The required buffer size can be obtained with
     /// <see cref="GetMaxJpegSize(ReadOnlySpan{byte}, TurboJpegEncodeOptions)"/>.
+    /// <paramref name="destination"/> must not overlap <paramref name="bmp"/>, because the
+    /// encoder may read BMP pixels directly from the source while writing JPEG bytes.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty, is not a supported BMP file, or
-    /// <paramref name="destination"/> is too small.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, <paramref name="options"/>
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output,
+    /// <paramref name="destination"/> is too small, or <paramref name="destination"/> overlaps
+    /// <paramref name="bmp"/>.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
@@ -145,6 +161,11 @@ public sealed class TurboJpegEncoder : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
+        if (destination.Overlaps(bmp))
+        {
+            ThrowHelper.ThrowDestinationOverlapsSource();
+        }
+
         var info = ReadBmp(bmp);
         var maxSize = CalculateMaxJpegSize(in info, options);
         if (destination.Length < maxSize)
@@ -159,14 +180,17 @@ public sealed class TurboJpegEncoder : IDisposable
     /// <param name="bmp">The complete BMP file contents.</param>
     /// <returns>The maximum possible JPEG file size in bytes.</returns>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, or the default options
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The BMP uses an encoding that this library does not support.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The worst-case JPEG size exceeds the maximum array length.
+    /// TurboJPEG reports a zero worst-case size, or the size exceeds the maximum array length.
     /// </exception>
     public int GetMaxJpegSize(ReadOnlySpan<byte> bmp) => GetMaxJpegSize(bmp, _defaultOptions);
 
@@ -176,14 +200,17 @@ public sealed class TurboJpegEncoder : IDisposable
     /// <returns>The maximum possible JPEG file size in bytes.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file, or <paramref name="options"/>
+    /// contain an invalid combination such as both restart intervals being non-zero,
+    /// <see cref="TurboJpegEncodeOptions.RestartBlocks"/> with lossless mode, or
+    /// <see cref="TurboJpegEncodeOptions.Density"/> with lossless or RGB output.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The BMP uses an encoding that this library does not support.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The worst-case JPEG size exceeds the maximum array length.
+    /// TurboJPEG reports a zero worst-case size, or the size exceeds the maximum array length.
     /// </exception>
     public int GetMaxJpegSize(ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options)
     {
@@ -215,18 +242,23 @@ public sealed class TurboJpegEncoder : IDisposable
 
     private static bool IsGrayscaleOutput(TurboJpegEncodeOptions options) =>
         options.Colorspace == TurboJpegColorspace.Grayscale
-        || options.Subsampling == TurboJpegSubsampling.Grayscale;
+        || (options.Colorspace != TurboJpegColorspace.Rgb
+            && options.Subsampling == TurboJpegSubsampling.Grayscale);
 
     private static int ResolveEffectiveSubsampling(TurboJpegEncodeOptions options)
     {
         if (options.Lossless)
         {
-            // Lossless compression never subsamples, so size the buffer for 4:4:4.
             return (int)TurboJpegSubsampling.Yuv444;
         }
 
-        return IsGrayscaleOutput(options)
-            ? (int)TurboJpegSubsampling.Grayscale
+        if (IsGrayscaleOutput(options))
+        {
+            return (int)TurboJpegSubsampling.Grayscale;
+        }
+
+        return options.Colorspace == TurboJpegColorspace.Rgb
+            ? (int)TurboJpegSubsampling.Yuv444
             : (int)options.Subsampling;
     }
 
@@ -249,12 +281,21 @@ public sealed class TurboJpegEncoder : IDisposable
         {
             ThrowHelper.ThrowLosslessRestartBlocks();
         }
+
+        if (options.Density is not null)
+        {
+            if (options.Lossless)
+            {
+                ThrowHelper.ThrowDensityWithLossless();
+            }
+
+            if (options.Colorspace == TurboJpegColorspace.Rgb)
+            {
+                ThrowHelper.ThrowDensityWithRgb();
+            }
+        }
     }
 
-    /// <summary>
-    /// Compresses validated BMP pixels directly into <paramref name="destination"/>. The caller
-    /// has already parsed the BMP and verified that the destination is large enough.
-    /// </summary>
     private int EncodeCore(
         ReadOnlySpan<byte> bmp,
         TurboJpegEncodeOptions options,
@@ -274,7 +315,7 @@ public sealed class TurboJpegEncoder : IDisposable
             var nativeHandle = handle.DangerousGetHandle();
             var effectiveSubsampling = ResolveEffectiveSubsampling(options);
             var colorspace = ResolveColorspace(options.Colorspace, grayscaleOutput);
-            var density = ResolveDensity(in info, options);
+            var density = ResolveDensity(in info, options, colorspace);
 
             try
             {
@@ -320,8 +361,13 @@ public sealed class TurboJpegEncoder : IDisposable
     }
 
     private static TurboJpegDensity ResolveDensity(
-        in BmpInfo info, TurboJpegEncodeOptions options)
+        in BmpInfo info, TurboJpegEncodeOptions options, int effectiveColorspace)
     {
+        if (options.Lossless || effectiveColorspace == (int)TurboJpegColorspace.Rgb)
+        {
+            return new TurboJpegDensity(1, 1, TurboJpegDensityUnits.Unknown);
+        }
+
         if (options.Density is { } density)
         {
             return density;
@@ -350,10 +396,11 @@ public sealed class TurboJpegEncoder : IDisposable
     }
 
     private static int ToPixelsPerInch(int pixelsPerMeter) =>
-        Math.Max(
-            1,
+        Math.Clamp(
             (int)Math.Round(
-                pixelsPerMeter * PixelsPerMeterToInch, MidpointRounding.AwayFromZero));
+                pixelsPerMeter * PixelsPerMeterToInch, MidpointRounding.AwayFromZero),
+            1,
+            65535);
 
     private void ApplyParameters(
         nint handle,
@@ -372,7 +419,6 @@ public sealed class TurboJpegEncoder : IDisposable
 
         if (!options.Lossless)
         {
-            // Start from lossy mode, then apply every effective lossy parameter.
             ApplyParameter(handle, TurboJpegNativeApi.ParamLossless, 0, ref _appliedLossless);
             ApplyParameter(
                 handle, TurboJpegNativeApi.ParamQuality, options.Quality, ref _appliedQuality);

@@ -56,10 +56,40 @@ public sealed class LossyOptionsTests
     }
 
     [Fact]
-    public void Colorspace_RgbWithYuv444_IsReportedAsRgb()
+    public void Colorspace_RgbWithDefaultSubsampling_IsReportedAsRgbAndFourFourFour()
+    {
+        var bmp = BmpBuilder.Create24(35, 29, Gradient);
+        var options = new TurboJpegEncodeOptions { Colorspace = TurboJpegColorspace.Rgb };
+        using var encoder = new TurboJpegEncoder();
+
+        var jpeg = encoder.EncodeToJpeg(bmp, options);
+        var info = DecoderApi.GetImageInfo(jpeg);
+
+        Assert.Equal((int)TurboJpegColorspace.Rgb, (int)info.Colorspace);
+        Assert.Equal((int)TurboJpegSubsampling.Yuv444, (int)info.Subsampling);
+        Assert.Equal(35, DecodedBmp.Decode(jpeg).Width);
+    }
+
+    [Theory]
+    [InlineData(TurboJpegSubsampling.Yuv444)]
+    [InlineData(TurboJpegSubsampling.Yuv422)]
+    [InlineData(TurboJpegSubsampling.Yuv420)]
+    [InlineData(TurboJpegSubsampling.Grayscale)]
+    [InlineData(TurboJpegSubsampling.Yuv440)]
+    [InlineData(TurboJpegSubsampling.Yuv411)]
+    [InlineData(TurboJpegSubsampling.Yuv441)]
+    [InlineData(TurboJpegSubsampling.Yuv410)]
+    [InlineData(TurboJpegSubsampling.Yuv24)]
+    public void Colorspace_Rgb_EverySubsamplingValue_EncodesAsFourFourFour(
+        TurboJpegSubsampling subsampling)
     {
         var bmp = BmpBuilder.Create24(35, 29, Gradient);
         var options = new TurboJpegEncodeOptions
+        {
+            Colorspace = TurboJpegColorspace.Rgb,
+            Subsampling = subsampling,
+        };
+        var fourFourFourOptions = new TurboJpegEncodeOptions
         {
             Colorspace = TurboJpegColorspace.Rgb,
             Subsampling = TurboJpegSubsampling.Yuv444,
@@ -70,6 +100,10 @@ public sealed class LossyOptionsTests
         var info = DecoderApi.GetImageInfo(jpeg);
 
         Assert.Equal((int)TurboJpegColorspace.Rgb, (int)info.Colorspace);
+        Assert.Equal((int)TurboJpegSubsampling.Yuv444, (int)info.Subsampling);
+        Assert.Equal(
+            encoder.GetMaxJpegSize(bmp, fourFourFourOptions),
+            encoder.GetMaxJpegSize(bmp, options));
         Assert.Equal(35, DecodedBmp.Decode(jpeg).Width);
     }
 
@@ -107,19 +141,21 @@ public sealed class LossyOptionsTests
     }
 
     [Fact]
-    public void FastDct_ProducesDecodableBaselineJpeg()
+    public void FastDct_ChangesEncodedBytesAndProducesBaselineJpeg()
     {
-        var bmp = BmpBuilder.Create24(37, 23, Gradient);
+        var bmp = BmpBuilder.Create24(64, 64, Noise);
         using var encoder = new TurboJpegEncoder();
 
-        var jpeg = encoder.EncodeToJpeg(bmp, new TurboJpegEncodeOptions { FastDct = true });
+        var defaultJpeg = encoder.EncodeToJpeg(bmp, TurboJpegEncodeOptions.Default);
+        var fastJpeg = encoder.EncodeToJpeg(bmp, new TurboJpegEncodeOptions { FastDct = true });
 
-        Assert.Equal(BaselineSof, JpegMarkers.FindSofMarker(jpeg));
-        Assert.Equal(37, DecodedBmp.Decode(jpeg).Width);
+        Assert.NotEqual(defaultJpeg, fastJpeg);
+        Assert.Equal(BaselineSof, JpegMarkers.FindSofMarker(fastJpeg));
+        Assert.Equal(64, DecodedBmp.Decode(fastJpeg).Width);
     }
 
     [Fact]
-    public void OptimizeCoding_ProducesDecodableOutputNotLargerThanDefault()
+    public void OptimizeCoding_ProducesStrictlySmallerOutput()
     {
         var bmp = BmpBuilder.Create24(64, 64, Noise);
         using var encoder = new TurboJpegEncoder();
@@ -129,8 +165,8 @@ public sealed class LossyOptionsTests
             bmp, new TurboJpegEncodeOptions { OptimizeCoding = true });
 
         Assert.True(
-            optimized.Length <= defaultJpeg.Length,
-            $"Optimized output is {optimized.Length} bytes, larger than the {defaultJpeg.Length}-byte default output.");
+            optimized.Length < defaultJpeg.Length,
+            $"Optimized output is {optimized.Length} bytes, which is not smaller than the {defaultJpeg.Length}-byte default output.");
         Assert.Equal(64, DecodedBmp.Decode(optimized).Width);
     }
 

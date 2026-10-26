@@ -5,7 +5,6 @@ using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Encoder.Internal.Bmp;
 
-/// <summary>Converts validated BMP pixels into a layout accepted by TurboJPEG.</summary>
 internal static class BmpPixelConverter
 {
     private const int PaletteEntries = 256;
@@ -15,16 +14,6 @@ internal static class BmpPixelConverter
     private const uint StandardGreenMask = 0x0000FF00;
     private const uint StandardBlueMask = 0x000000FF;
 
-    /// <summary>Selects the zero-copy fast path or converts the pixels into a pooled buffer.</summary>
-    /// <param name="bmp">The validated BMP file.</param>
-    /// <param name="info">The layout returned by <see cref="BmpReader.Read"/>.</param>
-    /// <param name="grayscaleOutput">
-    /// Whether the encoder was asked for grayscale output. This lets an identity grayscale
-    /// palette stay zero-copy and makes grayscale palette conversions emit one byte per
-    /// pixel. Colour palettes always expand to BGR because only native TurboJPEG turns
-    /// BGR into gray.
-    /// </param>
-    /// <returns>The pixel view; the caller must call <see cref="BmpPixels.Release"/>.</returns>
     internal static BmpPixels Convert(
         ReadOnlySpan<byte> bmp, in BmpInfo info, bool grayscaleOutput)
     {
@@ -57,10 +46,6 @@ internal static class BmpPixelConverter
             !info.TopDown,
             rented: null);
 
-    /// <summary>
-    /// Checks whether the 32-bit samples are already stored as BGRX. <see cref="BmpReader"/>
-    /// leaves the masks at zero for BI_RGB, so those files always use the BGRX order.
-    /// </summary>
     private static bool IsDirectBgrx(in BmpInfo info)
     {
         if (info.Compression == 0)
@@ -168,7 +153,6 @@ internal static class BmpPixelConverter
             var entry = paletteOffset + i * PaletteEntrySize;
             if (gray)
             {
-                // Only neutral palettes reach this path, so all channels carry this value.
                 lut[i] = bmp[entry + 2];
             }
             else
@@ -227,7 +211,6 @@ internal static class BmpPixelConverter
             var target = destination.Slice(y * pitch, pitch);
             for (var x = 0; x < info.Width; x++)
             {
-                // The high nibble holds the leftmost pixel.
                 var packed = source[x >> 1];
                 var index = (x & 1) == 0 ? packed >> 4 : packed & 0x0F;
                 StorePalettePixel(target, x, index, lut, gray);
@@ -249,7 +232,6 @@ internal static class BmpPixelConverter
             var target = destination.Slice(y * pitch, pitch);
             for (var x = 0; x < info.Width; x++)
             {
-                // The most significant bit holds the leftmost pixel.
                 var index = (source[x >> 3] >> (7 - (x & 7))) & 1;
                 StorePalettePixel(target, x, index, lut, gray);
             }
@@ -304,7 +286,6 @@ internal static class BmpPixelConverter
             var target = destination.Slice(y * pitch, pitch);
             for (var x = 0; x < info.Width; x++)
             {
-                // The fourth byte is not covered by any channel mask, so alpha is ignored.
                 var sample = BinaryPrimitives.ReadUInt32LittleEndian(source.Slice(x * 4, 4));
                 StoreBgr(target, x, blue, green, red, sample);
             }
@@ -325,12 +306,7 @@ internal static class BmpPixelConverter
         target[offset + 2] = red.Extract(sample);
     }
 
-    /// <summary>Extracts one contiguous bitfield channel and scales it to 0..255.</summary>
-    /// <remarks>
-    /// <see cref="BmpReader"/> rejects zero and non-contiguous masks before returning, so
-    /// the right-aligned field width is nonzero and the extracted value never exceeds it.
-    /// That guarantee is what makes the division below safe without an extra check.
-    /// </remarks>
+    // BmpReader rejects zero and non-contiguous masks, so the field width is nonzero.
     private readonly struct ChannelField
     {
         private readonly uint _mask;

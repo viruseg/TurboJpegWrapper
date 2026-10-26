@@ -72,9 +72,16 @@ public sealed class EncodeOptionsTests
     [Theory]
     [InlineData(-2)]
     [InlineData(3)]
-    public void Colorspace_Undefined_Throws(int colorspace) =>
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
+    public void Colorspace_Undefined_Throws(int colorspace)
+    {
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
             new TurboJpegEncodeOptions { Colorspace = (TurboJpegColorspace)colorspace });
+
+        Assert.Contains(
+            "Default, Rgb, YCbCr, or Grayscale",
+            exception.Message,
+            StringComparison.Ordinal);
+    }
 
     [Theory]
     [InlineData(TurboJpegColorspace.Default)]
@@ -125,6 +132,24 @@ public sealed class EncodeOptionsTests
             new TurboJpegEncodeOptions { RestartRows = -1 });
 
     [Fact]
+    public void RestartBlocks_SixteenBitMaximum_IsAccepted() =>
+        Assert.Equal(65535, new TurboJpegEncodeOptions { RestartBlocks = 65535 }.RestartBlocks);
+
+    [Fact]
+    public void RestartRows_SixteenBitMaximum_IsAccepted() =>
+        Assert.Equal(65535, new TurboJpegEncodeOptions { RestartRows = 65535 }.RestartRows);
+
+    [Fact]
+    public void RestartBlocks_AboveSixteenBitMaximum_Throws() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new TurboJpegEncodeOptions { RestartBlocks = 65536 });
+
+    [Fact]
+    public void RestartRows_AboveSixteenBitMaximum_Throws() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new TurboJpegEncodeOptions { RestartRows = 65536 });
+
+    [Fact]
     public void MaxMemoryMegabytes_Negative_Throws() =>
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new TurboJpegEncodeOptions { MaxMemoryMegabytes = -1 });
@@ -157,12 +182,36 @@ public sealed class EncodeOptionsTests
             new TurboJpegDensity(x, y, TurboJpegDensityUnits.PixelsPerInch));
 
     [Fact]
-    public void Density_ZeroInitiX_Throws() =>
+    public void Density_ZeroInitX_Throws() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new TurboJpegDensity { X = 0 });
 
     [Fact]
-    public void Density_ZeroInitiY_Throws() =>
+    public void Density_ZeroInitY_Throws() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new TurboJpegDensity { Y = 0 });
+
+    [Fact]
+    public void Density_SixteenBitMaximum_IsAccepted()
+    {
+        var density = new TurboJpegDensity(65535, 65535, TurboJpegDensityUnits.PixelsPerCentimeter);
+
+        Assert.Equal(65535, density.X);
+        Assert.Equal(65535, density.Y);
+    }
+
+    [Theory]
+    [InlineData(65536, 1)]
+    [InlineData(1, 65536)]
+    public void Density_DimensionAboveSixteenBitMaximum_Throws(int x, int y) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new TurboJpegDensity(x, y, TurboJpegDensityUnits.PixelsPerInch));
+
+    [Fact]
+    public void Density_XInitAboveSixteenBitMaximum_Throws() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new TurboJpegDensity { X = 65536 });
+
+    [Fact]
+    public void Density_YInitAboveSixteenBitMaximum_Throws() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => new TurboJpegDensity { Y = 65536 });
 
     [Theory]
     [InlineData(-1)]
@@ -199,6 +248,11 @@ public sealed class EncodeOptionsTests
     public void Density_DefaultStruct_ThrowsWhenAssigned() =>
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new TurboJpegEncodeOptions { Density = default(TurboJpegDensity) });
+
+    [Fact]
+    public void Density_PartiallyInitializedStruct_ThrowsWhenAssigned() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new TurboJpegEncodeOptions { Density = new TurboJpegDensity { X = 5 } });
 
     [Fact]
     public void With_PreservesValidatedValues()

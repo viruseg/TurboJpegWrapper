@@ -93,6 +93,41 @@ public sealed class BufferApiTests
     }
 
     [Fact]
+    public void EncodeToJpeg_DestinationOverlappingSource_ThrowsArgumentException()
+    {
+        var bmp = BmpBuilder.Create24(23, 17, Gradient);
+        using var encoder = new TurboJpegEncoder();
+        var buffer = new byte[encoder.GetMaxJpegSize(bmp)];
+        bmp.CopyTo(buffer, 0);
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => encoder.EncodeToJpeg(
+                buffer.AsSpan(0, bmp.Length), TurboJpegEncodeOptions.Default, buffer));
+
+        Assert.Equal("destination", exception.ParamName);
+    }
+
+    [Fact]
+    public void EncodeToJpeg_PartiallyOverlappingDestination_ThrowsArgumentException()
+    {
+        var bmp = BmpBuilder.Create24(23, 17, Gradient);
+        using var encoder = new TurboJpegEncoder();
+        var maxSize = encoder.GetMaxJpegSize(bmp);
+        var buffer = new byte[bmp.Length - 1 + maxSize];
+        bmp.CopyTo(buffer, 0);
+
+        Assert.Equal(maxSize, buffer.Length - (bmp.Length - 1));
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => encoder.EncodeToJpeg(
+                buffer.AsSpan(0, bmp.Length),
+                TurboJpegEncodeOptions.Default,
+                buffer.AsSpan(bmp.Length - 1)));
+
+        Assert.Equal("destination", exception.ParamName);
+    }
+
+    [Fact]
     public void GetMaxJpegSize_EmptyBmp_ThrowsArgumentException()
     {
         using var encoder = new TurboJpegEncoder();

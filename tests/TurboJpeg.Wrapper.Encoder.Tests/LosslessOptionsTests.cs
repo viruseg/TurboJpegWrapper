@@ -34,7 +34,40 @@ public sealed class LosslessOptionsTests
             bmp, new TurboJpegEncodeOptions { Lossless = true, LosslessPredictor = predictor });
 
         Assert.Equal(LosslessSof, JpegMarkers.FindSofMarker(jpeg));
+        Assert.Equal((byte)predictor, JpegMarkers.ReadScanParameters(jpeg).Predictor);
         AssertPixelsDecodedFrom(bmp, jpeg, Gradient);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(7)]
+    public void Lossless_Predictor_IsWrittenToSos(int predictor)
+    {
+        var bmp = BmpBuilder.Create24(35, 23, Gradient);
+
+        var jpeg = Encode(
+            bmp, new TurboJpegEncodeOptions { Lossless = true, LosslessPredictor = predictor });
+
+        Assert.Equal((byte)predictor, JpegMarkers.ReadScanParameters(jpeg).Predictor);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Lossless_PointTransform_IsWrittenToSos(int pointTransform)
+    {
+        var bmp = BmpBuilder.Create24(35, 23, Gradient);
+
+        var jpeg = Encode(
+            bmp,
+            new TurboJpegEncodeOptions { Lossless = true, LosslessPointTransform = pointTransform });
+
+        Assert.Equal(LosslessSof, JpegMarkers.FindSofMarker(jpeg));
+        Assert.Equal((byte)pointTransform, JpegMarkers.ReadScanParameters(jpeg).SuccessiveLow);
+        var decoded = DecodedBmp.Decode(jpeg);
+        Assert.Equal(35, decoded.Width);
+        Assert.Equal(23, decoded.Height);
     }
 
     [Fact]
@@ -298,8 +331,42 @@ public sealed class LosslessOptionsTests
             losslessMax >= actual.Length,
             $"Lossless maximum size {losslessMax} is smaller than the encoded {actual.Length} bytes.");
         Assert.True(
-            losslessMax >= lossyMax,
-            $"Lossless maximum size {losslessMax} is smaller than the 4:2:0 lossy maximum {lossyMax}.");
+            losslessMax > lossyMax,
+            $"Lossless maximum size {losslessMax} is not strictly larger than the 4:2:0 lossy maximum {lossyMax}.");
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public void Lossless_GrayscaleRequest_PreservesColour(bool usePalette, bool useColorspace)
+    {
+        var palette = CreateColourPalette(256);
+        var bmp = usePalette
+            ? BmpBuilder.CreatePalette8(
+                35, 23, (x, y) => (byte)((x * 13 + y * 29) & 0xFF), palette)
+            : BmpBuilder.Create24(35, 23, Gradient);
+        var expected = usePalette
+            ? (Func<int, int, (byte B, byte G, byte R)>)((x, y) =>
+                palette[(x * 13 + y * 29) & 0xFF])
+            : Gradient;
+        var options = useColorspace
+            ? new TurboJpegEncodeOptions
+            {
+                Lossless = true,
+                Colorspace = TurboJpegColorspace.Grayscale,
+            }
+            : new TurboJpegEncodeOptions
+            {
+                Lossless = true,
+                Subsampling = TurboJpegSubsampling.Grayscale,
+            };
+
+        var jpeg = Encode(bmp, options);
+
+        Assert.Equal(LosslessSof, JpegMarkers.FindSofMarker(jpeg));
+        AssertPixelsDecodedFrom(bmp, jpeg, expected);
     }
 
     private static byte[] Encode(byte[] bmp, TurboJpegEncodeOptions options)

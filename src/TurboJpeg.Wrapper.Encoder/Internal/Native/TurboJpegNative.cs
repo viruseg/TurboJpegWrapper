@@ -4,7 +4,6 @@ using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Encoder.Internal.Native;
 
-/// <summary>Wraps the TurboJPEG compression calls used by the encoder.</summary>
 internal static unsafe class TurboJpegNative
 {
     internal static SafeTurboJpegHandle CreateEncoderHandle()
@@ -69,8 +68,6 @@ internal static unsafe class TurboJpegNative
             innerException, overridePath);
     }
 
-    /// <summary>Compresses the source pixels and returns the number of JPEG bytes written.</summary>
-    /// <exception cref="TurboJpegException">TurboJPEG reported an error.</exception>
     internal static int Compress(
         nint handle,
         ReadOnlySpan<byte> source,
