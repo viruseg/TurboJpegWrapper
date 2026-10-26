@@ -28,6 +28,10 @@ public sealed class TurboJpegEncoder : IDisposable
     private int _appliedQuality = UnsetParameter;
     private int _appliedSubsampling = UnsetParameter;
     private int _appliedColorspace = UnsetParameter;
+    private int _appliedFastDct = UnsetParameter;
+    private int _appliedOptimize = UnsetParameter;
+    private int _appliedProgressive = UnsetParameter;
+    private int _appliedArithmetic = UnsetParameter;
     private int _appliedRestartBlocks = UnsetParameter;
     private int _appliedRestartRows = UnsetParameter;
     private int _appliedMaxMemory = UnsetParameter;
@@ -337,12 +341,33 @@ public sealed class TurboJpegEncoder : IDisposable
         ApplyParameter(
             handle, TurboJpegNativeApi.ParamBottomUp,
             bottomUp ? 1 : 0, ref _appliedBottomUp);
-        ApplyParameter(handle, TurboJpegNativeApi.ParamLossless, 0, ref _appliedLossless);
-        ApplyParameter(handle, TurboJpegNativeApi.ParamQuality, options.Quality, ref _appliedQuality);
-        ApplyParameter(
-            handle, TurboJpegNativeApi.ParamSubsamp, effectiveSubsampling, ref _appliedSubsampling);
-        ApplyParameter(
-            handle, TurboJpegNativeApi.ParamColorspace, colorspace, ref _appliedColorspace);
+
+        if (!options.Lossless)
+        {
+            // Lossless parameters are applied by Task 9; lossy-only parameters must not
+            // reach the native handle in lossless mode.
+            ApplyParameter(handle, TurboJpegNativeApi.ParamLossless, 0, ref _appliedLossless);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamQuality, options.Quality, ref _appliedQuality);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamSubsamp,
+                effectiveSubsampling, ref _appliedSubsampling);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamColorspace,
+                colorspace, ref _appliedColorspace);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamFastDct,
+                options.FastDct ? 1 : 0, ref _appliedFastDct);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamOptimize,
+                options.OptimizeCoding ? 1 : 0, ref _appliedOptimize);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamProgressive,
+                options.Progressive ? 1 : 0, ref _appliedProgressive);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamArithmetic,
+                options.ArithmeticCoding ? 1 : 0, ref _appliedArithmetic);
+        }
 
         // Setting either restart interval clears the other, so apply rows before blocks when
         // rows are zero (the Task 6 default) to leave both at zero deterministically.
@@ -400,6 +425,10 @@ public sealed class TurboJpegEncoder : IDisposable
         _appliedQuality = UnsetParameter;
         _appliedSubsampling = UnsetParameter;
         _appliedColorspace = UnsetParameter;
+        _appliedFastDct = UnsetParameter;
+        _appliedOptimize = UnsetParameter;
+        _appliedProgressive = UnsetParameter;
+        _appliedArithmetic = UnsetParameter;
         _appliedRestartBlocks = UnsetParameter;
         _appliedRestartRows = UnsetParameter;
         _appliedMaxMemory = UnsetParameter;
