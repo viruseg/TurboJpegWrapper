@@ -244,7 +244,7 @@ The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-
 - `TurboJpegDecoder` owns one native handle and is not thread-safe. Use one instance per thread or synchronize access.
 - The lossy 8-bit non-CMYK path, and lossless inputs whose BMP depth matches the native pixel format, writes directly into the final BMP buffer. High-precision, CMYK, and lossless fallback paths decode into managed scratch buffers and convert into the BMP, so they are slower than the direct 8-bit path.
 - On the direct path with `AutoOrient`, orientations 1-4 write directly into the BMP; 24-bit mirroring uses one pooled row buffer. Orientations 5-8 rent a decoded-size scratch buffer from the shared array pool and transpose it into the BMP.
-- The 24-bit row mirror uses a portable `Vector128` implementation on both architectures. Axis-swapping transposes use SSE2/SSSE3 implementations on x64 and portable `Vector128` implementations on ARM64. 12/16-bit downconversion and CMYK conversion use SIMD kernels with scalar tails.
+- The 24-bit row mirror uses a portable `Vector128` implementation on both architectures. Axis-swapping transposes use SSE2/SSSE3 implementations on x64 and portable `Vector128` implementations on ARM64. 12/16-bit downconversion, CMYK conversion, grayscale expansion, and the managed luma fallback use SIMD kernels with scalar tails.
 - Cropping reduces decode and conversion work in proportion to the cropped output size.
 - The span decode overloads let callers reuse a buffer and avoid allocating a BMP array per operation.
 - Supported scaling factors are cached after the first successful query.
