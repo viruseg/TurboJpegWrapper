@@ -52,6 +52,34 @@ Both packages expose a `TurboJpeg` facade and `TurboJpegException` types in thei
 - macOS requires 10.7 or later on x64 and 11 or later on ARM64. The `osx-universal` package serves both architectures.
 - If the matching native package is missing, the first operation throws `TurboJpegException` with the expected native library paths.
 
+## Benchmarks
+
+Measured with BenchmarkDotNet v0.15.8 and `MemoryDiagnoser` in Release on Windows 11 25H2, Intel Core i7-7700 (Kaby Lake, 4 physical/8 logical cores), .NET SDK 10.0.403, and .NET 10.0.14 x64 RyuJIT. `Ratio` and `Alloc Ratio` are relative to TurboJpeg. Gen0/Gen1/Gen2 are GC collection counts per 1000 operations; `Allocated` is per operation.
+
+### Encoding
+
+`TurboJpeg.EncodeToJpeg` with default options (quality 90, 4:2:0), GDI+ JPEG quality 90, and ImageSharp `JpegEncoder { Quality = 90 }`. The input BMP is supplied at run time through `TURBOJPEG_BENCHMARK_BMP`.
+
+| Method           | Mean      | Error     | StdDev    | Ratio | RatioSD | Gen0     | Gen1     | Gen2     | Allocated  | Alloc Ratio |
+|----------------- |----------:|----------:|----------:|------:|--------:|---------:|---------:|---------:|-----------:|------------:|
+| EncodeTurboJpeg  |  5.390 ms | 0.0613 ms | 0.0656 ms |  1.00 |    0.02 |        - |        - |        - |  343.75 KB |        1.00 |
+| EncodeGdi        |  8.665 ms | 0.1143 ms | 0.1013 ms |  1.61 |    0.03 | 218.7500 | 203.1250 | 203.1250 | 1294.16 KB |        3.76 |
+| EncodeImageSharp | 27.392 ms | 0.2689 ms | 0.2384 ms |  5.08 |    0.07 | 500.0000 | 468.7500 | 468.7500 | 2991.58 KB |        8.70 |
+
+### Decoding
+
+`TurboJpeg.DecodeToBmp` with `AutoOrient = true` and `Bpp24`; GDI+ and ImageSharp auto-orient from EXIF and produce a 24-bit BMP as well. The input JPEG is supplied at run time through `TURBOJPEG_BENCHMARK_JPEG`.
+
+| Method           | Mean      | Error     | StdDev    | Median    | Ratio | RatioSD | Gen0     | Gen1     | Gen2     | Allocated | Alloc Ratio |
+|----------------- |----------:|----------:|----------:|----------:|------:|--------:|---------:|---------:|---------:|----------:|------------:|
+| DecodeTurboJpeg  |  6.341 ms | 0.1250 ms | 0.2053 ms |  6.227 ms |  1.00 |    0.04 | 500.0000 | 500.0000 | 500.0000 |   4.42 MB |        1.00 |
+| DecodeGdi        | 14.172 ms | 0.2785 ms | 0.2980 ms | 14.187 ms |  2.24 |    0.08 | 875.0000 | 875.0000 | 875.0000 |   8.85 MB |        2.00 |
+| DecodeImageSharp | 15.002 ms | 0.2241 ms | 0.1872 ms | 14.986 ms |  2.37 |    0.08 | 765.6250 | 656.2500 | 656.2500 |   9.29 MB |        2.10 |
+
+GDI+ and ImageSharp do not expose the same chroma-subsampling and TurboJPEG-specific controls, so these results are throughput and allocation indicators, not a controlled codec comparison or a byte-identical output comparison. Absolute numbers depend on the input image, hardware, and runtime.
+
+The harnesses are in [bench/TurboJpeg.Wrapper.Encoder.Benchmark](bench/TurboJpeg.Wrapper.Encoder.Benchmark) and [bench/TurboJpeg.Wrapper.Decoder.Benchmark](bench/TurboJpeg.Wrapper.Decoder.Benchmark).
+
 ## Package documentation
 
 - [TurboJpeg.Wrapper.Decoder README](src/TurboJpeg.Wrapper.Decoder/README.md)
