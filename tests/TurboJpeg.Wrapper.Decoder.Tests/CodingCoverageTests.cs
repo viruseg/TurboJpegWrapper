@@ -53,7 +53,9 @@ public sealed class CodingCoverageTests
         AssertColor(bmp, 5, 7, 255, 0, 0);
         AssertColor(bmp, 5, 10, 255, 255, 255);
         AssertColor(bmp, 5, 13, 0, 0, 0);
-    }    [Theory]
+    }
+
+    [Theory]
     [InlineData("arithmetic.jpg")]
     [InlineData("s-unknown.jpg")]
     public void DecodeToBmp_SupportedEntropyAndSubsampling_SupportsScalingAndOrientation(
