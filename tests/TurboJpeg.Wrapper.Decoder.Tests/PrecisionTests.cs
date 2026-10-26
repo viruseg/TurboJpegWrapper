@@ -128,6 +128,42 @@ public sealed class PrecisionTests
         Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(bmp, 5, 13));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DecodeToBmp_Precision12Wide_MatchesSamples(bool autoOrient)
+    {
+        var jpeg = autoOrient
+            ? JpegPatcher.WithExifOrientation(TestFixtures.Load("lossless-p12-wide.jpg"), 6)
+            : TestFixtures.Load("lossless-p12-wide.jpg");
+
+        var bmp = new TurboJpegDecoder().DecodeToBmp(jpeg, new TurboJpegDecodeOptions
+        {
+            AutoOrient = autoOrient
+        });
+
+        Assert.Equal(autoOrient ? 2 : 2048, BmpTestHelpers.Width(bmp));
+        Assert.Equal(autoOrient ? 2048 : 2, BmpTestHelpers.Height(bmp));
+        Assert.Equal(32, BmpTestHelpers.BitsPerPixel(bmp));
+
+        for (var y = 0; y < BmpTestHelpers.Height(bmp); y++)
+        {
+            for (var x = 0; x < BmpTestHelpers.Width(bmp); x++)
+            {
+                var sourceX = autoOrient ? y : x;
+                var expected = (sourceX % 4) switch
+                {
+                    0 => ((byte)0, (byte)0, (byte)255, (byte)255),
+                    1 => ((byte)0, (byte)255, (byte)0, (byte)255),
+                    2 => ((byte)255, (byte)0, (byte)0, (byte)255),
+                    _ => ((byte)255, (byte)255, (byte)255, (byte)255),
+                };
+
+                Assert.Equal(expected, BmpTestHelpers.Pixel(bmp, x, y));
+            }
+        }
+    }
+
     [Fact]
     public void DecodeToBmp_LowPrecisionRgb_WithAutoOrient_ScalesAndSwaps()
     {

@@ -110,10 +110,11 @@ internal static class CmykConverter
                     s_bgrPack);
 
                 ref var destination = ref Unsafe.Add(ref destinationRef, i * 3);
-                Unsafe.WriteUnaligned(ref destination, Vector128.AsUInt64(low));
+                Unsafe.WriteUnaligned(ref destination, Vector128.AsUInt64(low).GetElement(0));
                 Unsafe.WriteUnaligned(
                     ref Unsafe.Add(ref destination, 8), Vector128.AsUInt32(low).GetElement(2));
-                Unsafe.WriteUnaligned(ref Unsafe.Add(ref destination, 12), Vector128.AsUInt64(high));
+                Unsafe.WriteUnaligned(
+                    ref Unsafe.Add(ref destination, 12), Vector128.AsUInt64(high).GetElement(0));
                 Unsafe.WriteUnaligned(
                     ref Unsafe.Add(ref destination, 20), Vector128.AsUInt32(high).GetElement(2));
             }
@@ -149,7 +150,7 @@ internal static class CmykConverter
                 var bytes = Vector128.Narrow(luma, s_zero);
 
                 Unsafe.WriteUnaligned(
-                    ref Unsafe.Add(ref destinationRef, i), Vector128.AsUInt64(bytes));
+                    ref Unsafe.Add(ref destinationRef, i), Vector128.AsUInt64(bytes).GetElement(0));
             }
         }
 

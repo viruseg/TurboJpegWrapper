@@ -1052,11 +1052,19 @@ public sealed class TurboJpegDecoder : IDisposable
 
             var destination = bmp[plan.PixelOffset..];
             var opaqueAlpha = plan.BytesPerPixel == 4;
+            var nonTemporal = opaqueAlpha
+                && plan.Orientation is (ExifOrientation.Normal or ExifOrientation.FlipVertical);
             for (var y = 0; y < plan.Height; y++)
             {
                 var row = destination.Slice(y * plan.OutputStride, rowSamples);
                 DownscaleHighPrecisionRow(
-                    samples, y * rowSamples, rowSamples, plan.Precision, row, opaqueAlpha);
+                    samples,
+                    y * rowSamples,
+                    rowSamples,
+                    plan.Precision,
+                    row,
+                    opaqueAlpha,
+                    nonTemporal);
             }
         }
         finally
@@ -1377,7 +1385,8 @@ public sealed class TurboJpegDecoder : IDisposable
         int sampleCount,
         int precision,
         Span<byte> destination,
-        bool opaqueAlpha = false)
+        bool opaqueAlpha = false,
+        bool nonTemporal = false)
     {
         var samples = scratch.AsSpan(checked(sampleOffset * 2), checked(sampleCount * 2));
 
@@ -1388,7 +1397,8 @@ public sealed class TurboJpegDecoder : IDisposable
                 destination,
                 sampleCount,
                 precision,
-                opaqueAlpha);
+                opaqueAlpha,
+                nonTemporal);
         }
         else
         {

@@ -65,6 +65,41 @@ public sealed class CmykTests
     }
 
     [Theory]
+    [InlineData(TurboJpegBmpBitDepth.Bpp8)]
+    [InlineData(TurboJpegBmpBitDepth.Bpp24)]
+    public void DecodeToBmp_CmykWideSpan_DoesNotWritePastBmpSize(
+        TurboJpegBmpBitDepth bitDepth)
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("cmyk-wide.jpg");
+        var options = new TurboJpegDecodeOptions { BmpBitDepth = bitDepth };
+        var size = decoder.GetBmpSize(jpeg, options);
+        var buffer = new byte[size + 64];
+        buffer.AsSpan(size).Fill(0xA5);
+
+        var written = decoder.DecodeToBmp(jpeg, options, buffer.AsSpan(0, size));
+
+        Assert.Equal(size, written);
+        Assert.Equal(16, BmpTestHelpers.Width(buffer));
+        Assert.Equal(1, BmpTestHelpers.Height(buffer));
+        Assert.All(buffer.AsSpan(size).ToArray(), value => Assert.Equal(0xA5, value));
+
+        if (bitDepth == TurboJpegBmpBitDepth.Bpp8)
+        {
+            Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(buffer, 12, 0));
+            Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(buffer, 13, 0));
+            Assert.Equal((77, 77, 77, 255), BmpTestHelpers.Pixel(buffer, 14, 0));
+            Assert.Equal((178, 178, 178, 255), BmpTestHelpers.Pixel(buffer, 15, 0));
+            return;
+        }
+
+        Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(buffer, 12, 0));
+        Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(buffer, 13, 0));
+        Assert.Equal((0, 0, 255, 255), BmpTestHelpers.Pixel(buffer, 14, 0));
+        Assert.Equal((255, 255, 0, 255), BmpTestHelpers.Pixel(buffer, 15, 0));
+    }
+
+    [Theory]
     [InlineData(TurboJpegBmpBitDepth.Bpp32)]
     [InlineData(TurboJpegBmpBitDepth.Bpp24)]
     [InlineData(TurboJpegBmpBitDepth.Bpp8)]

@@ -41,7 +41,8 @@ internal static class PrecisionScale
         Span<byte> destination,
         int sampleCount,
         int precision,
-        bool opaqueAlpha = false)
+        bool opaqueAlpha = false,
+        bool nonTemporal = false)
     {
         if (precision != 12)
         {
@@ -58,11 +59,12 @@ internal static class PrecisionScale
             {
                 var offset = Vector256.Create((ushort)8);
                 var maximum = Vector256.Create((ushort)255);
-                var nonTemporal = opaqueAlpha
+                var useNonTemporal = nonTemporal
+                    && opaqueAlpha
                     && Avx.IsSupported
                     && sampleCount >= NonTemporalSampleThreshold;
 
-                if (nonTemporal)
+                if (useNonTemporal)
                 {
                     for (; i < sampleCount && ((nuint)(destinationPtr + i) & 31) != 0; i++)
                     {
@@ -100,7 +102,7 @@ internal static class PrecisionScale
                         high |= alphaMask;
                     }
 
-                    if (nonTemporal)
+                    if (useNonTemporal)
                     {
                         Avx.StoreAlignedNonTemporal(destinationPtr + i, low);
                         Avx.StoreAlignedNonTemporal(destinationPtr + i + 32, high);
