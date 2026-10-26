@@ -82,17 +82,28 @@ public sealed class GetImageInfoTests
     }
 
     [Theory]
+    [InlineData(TurboJpegColorspace.YCbCr, 1, false)]
     [InlineData(TurboJpegColorspace.YCbCr, 2, true)]
     [InlineData(TurboJpegColorspace.Grayscale, 2, true)]
     [InlineData(TurboJpegColorspace.Rgb, 2, true)]
+    [InlineData(TurboJpegColorspace.Cmyk, 2, true)]
+    [InlineData(TurboJpegColorspace.Ycck, 2, true)]
     [InlineData(TurboJpegColorspace.YCbCr, 8, true)]
     [InlineData(TurboJpegColorspace.Grayscale, 8, true)]
     [InlineData(TurboJpegColorspace.Rgb, 8, true)]
     [InlineData(TurboJpegColorspace.Cmyk, 8, true)]
     [InlineData(TurboJpegColorspace.Ycck, 8, true)]
     [InlineData(TurboJpegColorspace.YCbCr, 12, true)]
+    [InlineData(TurboJpegColorspace.Grayscale, 12, true)]
+    [InlineData(TurboJpegColorspace.Rgb, 12, true)]
+    [InlineData(TurboJpegColorspace.Cmyk, 12, true)]
+    [InlineData(TurboJpegColorspace.Ycck, 12, true)]
     [InlineData(TurboJpegColorspace.YCbCr, 16, true)]
-    [InlineData(TurboJpegColorspace.Cmyk, 12, false)]
+    [InlineData(TurboJpegColorspace.Grayscale, 16, true)]
+    [InlineData(TurboJpegColorspace.Rgb, 16, true)]
+    [InlineData(TurboJpegColorspace.Cmyk, 16, true)]
+    [InlineData(TurboJpegColorspace.Ycck, 16, true)]
+    [InlineData(TurboJpegColorspace.Cmyk, 17, false)]
     public void CanDecodeToBmp_ReflectsSupportedFormats(
         TurboJpegColorspace colorspace, int precision, bool expected)
     {

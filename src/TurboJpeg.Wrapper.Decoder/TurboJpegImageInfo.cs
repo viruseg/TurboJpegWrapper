@@ -18,10 +18,7 @@ public readonly record struct TurboJpegImageInfo(
     /// <summary>
     /// Gets a value indicating whether the image can be decoded to a BMP by this library.
     /// </summary>
-    public bool CanDecodeToBmp =>
-        Precision is >= 2 and <= 16
-        && (Precision <= 8
-            || Colorspace is not TurboJpegColorspace.Cmyk and not TurboJpegColorspace.Ycck);
+    public bool CanDecodeToBmp => Precision is >= 2 and <= 16;
 
     /// <summary>Gets the horizontal pixel density from the JPEG header.</summary>
     public int DensityX { get; init; }

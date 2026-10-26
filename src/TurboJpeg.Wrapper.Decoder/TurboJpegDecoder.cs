@@ -287,11 +287,15 @@ public sealed class TurboJpegDecoder : IDisposable
         }
 
         var pipeline = DecodePipeline.Direct8;
-        if (info.Colorspace is TurboJpegColorspace.Cmyk or TurboJpegColorspace.Ycck
-            && info.Precision is >= 2 and <= 8)
+        if (info.Colorspace is TurboJpegColorspace.Cmyk or TurboJpegColorspace.Ycck)
         {
             pixelFormat = TurboJpegNativeApi.PixelFormatCmyk;
-            pipeline = DecodePipeline.CmykFrom8;
+            pipeline = info.Precision switch
+            {
+                <= 8 => DecodePipeline.CmykFrom8,
+                <= 12 => DecodePipeline.CmykFrom12,
+                _ => DecodePipeline.CmykFrom16,
+            };
         }
         else if (info.IsLossless
             && info.Colorspace == TurboJpegColorspace.Grayscale
@@ -440,6 +444,11 @@ public sealed class TurboJpegDecoder : IDisposable
                     DecodeCmykToBmp(handle, jpeg, options, in plan, bmp, lut);
                     break;
 
+                case DecodePipeline.CmykFrom12:
+                case DecodePipeline.CmykFrom16:
+                    DecodeHighPrecisionCmykToBmp(handle, jpeg, options, in plan, bmp);
+                    break;
+
                 default:
                     if (!options.StopOnWarning)
                     {
@@ -508,6 +517,11 @@ public sealed class TurboJpegDecoder : IDisposable
 
             case DecodePipeline.CmykFrom8:
                 DecodeCmykWithOrientation(handle, jpeg, options, in plan, bmp, lut);
+                return;
+
+            case DecodePipeline.CmykFrom12:
+            case DecodePipeline.CmykFrom16:
+                DecodeHighPrecisionCmykWithOrientation(handle, jpeg, options, in plan, bmp);
                 return;
         }
 
@@ -857,6 +871,159 @@ public sealed class TurboJpegDecoder : IDisposable
         {
             ArrayPool<byte>.Shared.Return(outputScratch);
             ArrayPool<byte>.Shared.Return(cmykScratch);
+        }
+    }
+
+    private static void DecodeHighPrecisionCmykToBmp(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var sourcePitch = checked(plan.Width * 4);
+        var sampleCount = checked(sourcePitch * plan.Height);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(sampleCount * 2));
+        byte[]? cmykBuffer = null;
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                sampleCount,
+                plan.Precision,
+                sourcePitch,
+                TurboJpegNativeApi.PixelFormatCmyk,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var destination = bmp[plan.PixelOffset..];
+
+            if (plan.BytesPerPixel == 4)
+            {
+                for (var y = 0; y < plan.Height; y++)
+                {
+                    DownscaleHighPrecisionRow(
+                        samples,
+                        y * sourcePitch,
+                        sourcePitch,
+                        plan.Precision,
+                        destination.Slice(y * plan.OutputStride, sourcePitch));
+                }
+
+                var pixels = destination[..sampleCount];
+                CmykConverter.ToBgra(pixels, pixels, pixelCount);
+                return;
+            }
+
+            cmykBuffer = ArrayPool<byte>.Shared.Rent(sampleCount);
+            var cmyk = cmykBuffer.AsSpan(0, sampleCount);
+            for (var y = 0; y < plan.Height; y++)
+            {
+                DownscaleHighPrecisionRow(
+                    samples,
+                    y * sourcePitch,
+                    sourcePitch,
+                    plan.Precision,
+                    cmyk.Slice(y * sourcePitch, sourcePitch));
+            }
+
+            var rowByteCount = checked(plan.Width * plan.BytesPerPixel);
+            for (var y = 0; y < plan.Height; y++)
+            {
+                var source = cmyk.Slice(y * sourcePitch, sourcePitch);
+                var row = destination.Slice(y * plan.OutputStride, rowByteCount);
+
+                if (plan.BytesPerPixel == 3)
+                {
+                    CmykConverter.ToBgr(source, row, plan.Width);
+                }
+                else
+                {
+                    CmykConverter.ToGray(source, row, plan.Width);
+                }
+            }
+        }
+        finally
+        {
+            if (cmykBuffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(cmykBuffer);
+            }
+
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecisionCmykWithOrientation(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var sourcePitch = checked(plan.Width * 4);
+        var sampleCount = checked(sourcePitch * plan.Height);
+        var outputByteCount = checked(pixelCount * plan.BytesPerPixel);
+        var outputWithPadding = checked(outputByteCount + 4);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(sampleCount * 2));
+        var cmykBuffer = ArrayPool<byte>.Shared.Rent(sampleCount);
+        var outputBuffer = ArrayPool<byte>.Shared.Rent(outputWithPadding);
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                sampleCount,
+                plan.Precision,
+                sourcePitch,
+                TurboJpegNativeApi.PixelFormatCmyk,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var cmyk = cmykBuffer.AsSpan(0, sampleCount);
+            for (var y = 0; y < plan.Height; y++)
+            {
+                DownscaleHighPrecisionRow(
+                    samples,
+                    y * sourcePitch,
+                    sourcePitch,
+                    plan.Precision,
+                    cmyk.Slice(y * sourcePitch, sourcePitch));
+            }
+
+            var output = outputBuffer.AsSpan(0, outputWithPadding);
+            if (plan.BytesPerPixel == 4)
+            {
+                CmykConverter.ToBgra(cmyk, output, pixelCount);
+            }
+            else if (plan.BytesPerPixel == 3)
+            {
+                CmykConverter.ToBgr(cmyk, output, pixelCount);
+            }
+            else
+            {
+                CmykConverter.ToGray(cmyk, output, pixelCount);
+            }
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                output,
+                plan.Width,
+                plan.Height,
+                plan.BytesPerPixel,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(outputBuffer);
+            ArrayPool<byte>.Shared.Return(cmykBuffer);
+            ArrayPool<byte>.Shared.Return(samples);
         }
     }
 
@@ -1398,6 +1565,8 @@ public sealed class TurboJpegDecoder : IDisposable
         GrayExpandFrom12,
         GrayExpandFrom16,
         CmykFrom8,
+        CmykFrom12,
+        CmykFrom16,
     }
 
     private readonly struct DecodePlan
