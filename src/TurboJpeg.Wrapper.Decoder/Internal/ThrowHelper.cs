@@ -55,6 +55,13 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowScratchTooLarge(long scratchBytes) =>
+        throw new TurboJpegImageTooLargeException(
+            $"The decode scratch buffer requires {scratchBytes} bytes, " +
+            $"which exceeds the maximum array length of {Array.MaxLength} bytes.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ThrowDisposed() =>
         throw new ObjectDisposedException("TurboJpegDecoder");
 

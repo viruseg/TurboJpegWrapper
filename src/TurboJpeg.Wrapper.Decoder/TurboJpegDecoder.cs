@@ -324,6 +324,21 @@ public sealed class TurboJpegDecoder : IDisposable
             pipeline = DecodePipeline.Downscale16;
         }
 
+        if (info.Precision > 8)
+        {
+            var scratchSamplesPerPixel = pixelFormat switch
+            {
+                TurboJpegNativeApi.PixelFormatGray => 1,
+                TurboJpegNativeApi.PixelFormatBgr => 3,
+                _ => 4,
+            };
+            var scratchBytes = 2L * width * height * scratchSamplesPerPixel;
+            if (scratchBytes > Array.MaxLength)
+            {
+                ThrowHelper.ThrowScratchTooLarge(scratchBytes);
+            }
+        }
+
         var pixelsPerMeterX = BmpHeaderWriter.ToPixelsPerMeter(info.DensityX, info.DensityUnits);
         var pixelsPerMeterY = BmpHeaderWriter.ToPixelsPerMeter(info.DensityY, info.DensityUnits);
 

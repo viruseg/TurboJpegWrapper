@@ -203,6 +203,32 @@ public sealed class PrecisionTests
         Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(bmp, 5, 21));
     }
 
+    [Fact]
+    public void DecodeToBmp_LossyGray12_Bpp32()
+    {
+        var jpeg = TestFixtures.Load("gray-lossy-p12.jpg");
+        using var decoder = new TurboJpegDecoder();
+
+        var info = decoder.GetImageInfo(jpeg);
+        Assert.Equal(12, info.Precision);
+        Assert.Equal(TurboJpegColorspace.Grayscale, info.Colorspace);
+        Assert.False(info.IsLossless);
+
+        var bmp = decoder.DecodeToBmp(jpeg, new TurboJpegDecodeOptions
+        {
+            BmpBitDepth = TurboJpegBmpBitDepth.Bpp32
+        });
+
+        Assert.Equal(32, BmpTestHelpers.BitsPerPixel(bmp));
+        Assert.Equal((77, 77, 77, 255), BmpTestHelpers.Pixel(bmp, 5, 1));
+        Assert.Equal((150, 150, 150, 255), BmpTestHelpers.Pixel(bmp, 5, 4));
+        Assert.Equal((29, 29, 29, 255), BmpTestHelpers.Pixel(bmp, 5, 7));
+        Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(bmp, 5, 9));
+        Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(bmp, 5, 13));
+        Assert.Equal((32, 32, 32, 255), BmpTestHelpers.Pixel(bmp, 5, 17));
+        Assert.Equal((64, 64, 64, 255), BmpTestHelpers.Pixel(bmp, 5, 21));
+    }
+
     [Theory]
     [InlineData("lossless-p9.jpg")]
     [InlineData("lossless-p10.jpg")]
@@ -245,5 +271,22 @@ public sealed class PrecisionTests
         Assert.True(Math.Abs(g - 128) <= 1, $"g={g}");
         Assert.True(Math.Abs(r - 128) <= 1, $"r={r}");
         Assert.Equal(255, a);
+    }
+
+    [Fact]
+    public void GetBmpSize_HugeDimensions_ScratchTooLarge_ThrowsImageTooLarge()
+    {
+        var jpeg = TestFixtures.Load("precision12.jpg");
+        JpegPatcher.SetDimensions(jpeg, 20000, 14000);
+        using var decoder = new TurboJpegDecoder();
+
+        var exception = Assert.Throws<TurboJpegImageTooLargeException>(
+            () => decoder.GetBmpSize(jpeg, new TurboJpegDecodeOptions
+            {
+                BmpBitDepth = TurboJpegBmpBitDepth.Bpp32,
+                MaxPixels = 0
+            }));
+
+        Assert.Contains("scratch", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
