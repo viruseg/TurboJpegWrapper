@@ -312,17 +312,21 @@ internal static class BmpBuilder
         return buffer;
     }
 
+    /// <summary>Builds a structurally valid OS/2 core-header (DIB size 12) 24-bit BMP.</summary>
     internal static byte[] CreateOs2Core(int width, int height)
     {
-        var buffer = new byte[FileHeaderSize + CoreDibHeaderSize];
+        const int coreDibHeaderSize = 12;
+        var stride = GetStride(width, 24);
+        var pixelOffset = FileHeaderSize + coreDibHeaderSize;
+        var buffer = new byte[checked(pixelOffset + stride * height)];
 
         buffer[0] = (byte)'B';
         buffer[1] = (byte)'M';
         BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(2), (uint)buffer.Length);
-        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(10), 26);
-        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(14), 12);
-        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(18), (ushort)width);
-        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(20), (ushort)height);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(10), (uint)pixelOffset);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(14), coreDibHeaderSize);
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(18), checked((ushort)width));
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(20), checked((ushort)height));
         BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(22), 1);
         BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(24), 24);
         return buffer;

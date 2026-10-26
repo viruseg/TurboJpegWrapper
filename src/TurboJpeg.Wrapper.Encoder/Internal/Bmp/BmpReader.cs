@@ -7,17 +7,17 @@ namespace TurboJpegWrapper.Encoder.Internal.Bmp;
 internal static class BmpReader
 {
     private const int FileHeaderSize = 14;
-    private const int MinDibHeaderSize = 40;
-    private const int MinBufferSize = FileHeaderSize + MinDibHeaderSize;
-    private const int BitfieldMaskOffset = FileHeaderSize + MinDibHeaderSize;
+    private const int DibSizeFieldSize = 4;
+    private const int MinimumHeaderSize = FileHeaderSize + DibSizeFieldSize;
+    private const int BitfieldMaskOffset = FileHeaderSize + 40;
     private const int BitfieldMaskBytes = 12;
 
     internal static BmpInfo Read(ReadOnlySpan<byte> bmp)
     {
-        if (bmp.Length < MinBufferSize)
+        if (bmp.Length < MinimumHeaderSize)
         {
             throw new ArgumentException(
-                "The BMP buffer is too short to contain a BMP file header and DIB header.",
+                "The BMP buffer is too short to contain a BMP file header and the DIB header size.",
                 nameof(bmp));
         }
 
@@ -26,7 +26,10 @@ internal static class BmpReader
             throw new ArgumentException("The BMP signature is missing.", nameof(bmp));
         }
 
-        var dibSizeValue = BinaryPrimitives.ReadUInt32LittleEndian(bmp.Slice(FileHeaderSize, 4));
+        // The DIB size decides whether the file is an unsupported OS/2 core bitmap, so it
+        // must be classified before the full DIB header can be required.
+        var dibSizeValue = BinaryPrimitives.ReadUInt32LittleEndian(
+            bmp.Slice(FileHeaderSize, DibSizeFieldSize));
         if (dibSizeValue != 40 &&
             dibSizeValue != 52 &&
             dibSizeValue != 56 &&
@@ -34,10 +37,17 @@ internal static class BmpReader
             dibSizeValue != 124)
         {
             throw new TurboJpegUnsupportedException(
-                $"BMP DIB header size {dibSizeValue} is not supported.");
+                dibSizeValue == 12
+                    ? "OS/2 core BMPs (DIB header size 12) are not supported."
+                    : $"BMP DIB header size {dibSizeValue} is not supported.");
         }
 
         var dibSize = (int)dibSizeValue;
+        if (bmp.Length < FileHeaderSize + dibSize)
+        {
+            throw new ArgumentException(
+                "The BMP buffer is too short to contain the DIB header.", nameof(bmp));
+        }
 
         var width = BinaryPrimitives.ReadInt32LittleEndian(bmp.Slice(18, 4));
         if (width <= 0)

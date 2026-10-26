@@ -341,8 +341,19 @@ public sealed class BmpReaderTests
     [Fact]
     public void Read_Os2CoreHeader_ThrowsUnsupported()
     {
-        var bmp = BmpBuilder.CreateOs2Core(2, 2);
+        var bmp = BmpBuilder.CreateOs2Core(1, 7);
 
+        Assert.Equal(54, bmp.Length);
+        Assert.Throws<TurboJpegUnsupportedException>(() => BmpReader.Read(bmp));
+    }
+
+    [Fact]
+    public void Read_Sub54ByteOs2Core_ThrowsUnsupported()
+    {
+        var bmp = BmpBuilder.CreateOs2Core(1, 1);
+
+        Assert.Equal(30, bmp.Length);
+        Assert.True(bmp.Length < 54);
         Assert.Throws<TurboJpegUnsupportedException>(() => BmpReader.Read(bmp));
     }
 
