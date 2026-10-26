@@ -9,4 +9,5 @@
   <Project Path="tests/TurboJpeg.Wrapper.Decoder.Tests/TurboJpeg.Wrapper.Decoder.Tests.csproj" />
   <Project Path="tests/TurboJpeg.Wrapper.Encoder.Tests/TurboJpeg.Wrapper.Encoder.Tests.csproj" />
   <Project Path="bench/TurboJpeg.Wrapper.Decoder.Benchmark/TurboJpeg.Wrapper.Decoder.Benchmark.csproj" />
+  <Project Path="bench/TurboJpeg.Wrapper.Encoder.Benchmark/TurboJpeg.Wrapper.Encoder.Benchmark.csproj" />
 </Solution>
