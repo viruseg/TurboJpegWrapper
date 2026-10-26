@@ -112,7 +112,7 @@ If a native encode fails, the instance recreates its native handle so it remains
 | --- | --- | --- |
 | `Quality` | `90` | JPEG quality from 1 (lowest) to 100 (highest). Ignored when `Lossless` is `true`. |
 | `Subsampling` | `Yuv420` | Chroma subsampling: `Yuv444`, `Yuv422`, `Yuv420`, `Grayscale`, `Yuv440`, `Yuv411`, `Yuv441`, `Yuv410`, or `Yuv24`. `Unknown` is invalid. Ignored when `Lossless` is `true` or `Colorspace` is `Rgb`; RGB output always uses 4:4:4. An explicit RGB colorspace takes precedence over `Subsampling = Grayscale`. |
-| `Colorspace` | `Default` | `Default` resolves to `YCbCr` for colour input; `Rgb`, `YCbCr`, and `Grayscale` can be requested explicitly. `Rgb` output always uses 4:4:4 regardless of `Subsampling`. `Grayscale`, or `Subsampling = Grayscale`, produces grayscale output. Ignored when `Lossless` is `true`. |
+| `Colorspace` | `Default` | `Default` resolves to `YCbCr` for colour input; `Rgb`, `YCbCr`, and `Grayscale` can be requested explicitly. `Rgb` output always uses 4:4:4 regardless of `Subsampling`. `Grayscale`, or `Subsampling = Grayscale` when `Colorspace` is not explicitly `Rgb`, produces grayscale output; explicit `Rgb` wins. Ignored when `Lossless` is `true`. |
 | `FastDct` | `false` | Uses the fastest DCT/IDCT algorithm. Ignored when `Lossless` is `true`. |
 | `OptimizeCoding` | `false` | Generates optimal Huffman coding tables. Ignored when `Lossless` is `true`. |
 | `Progressive` | `false` | Produces a progressive JPEG. Ignored when `Lossless` is `true`. |
@@ -149,7 +149,7 @@ The encoder accepts complete BMP files with DIB header sizes 40, 52, 56, 108, or
 | 16-bit `BI_RGB` (X1R5G5B5) or `BI_BITFIELDS` (including RGB565) | Extract and scale channels to BGR | Pooled conversion |
 | 32-bit `BI_BITFIELDS` with other masks | Extract and scale channels to BGR; alpha is ignored | Pooled conversion |
 
-"Grayscale output requested" means `Colorspace = Grayscale` or `Subsampling = Grayscale`, and it applies only to lossy encoding. Lossless mode ignores both options and does not subsample or convert colour to grayscale. In lossy mode, colour palettes always expand to BGR even when grayscale output is requested; native TurboJPEG performs the colour-to-gray conversion.
+"Grayscale output requested" means `Colorspace = Grayscale`, or `Subsampling = Grayscale` when `Colorspace` is not explicitly `Rgb` (explicit `Rgb` wins and forces 4:4:4), and it applies only to lossy encoding. Lossless mode ignores both options and does not subsample or convert colour to grayscale. In lossy mode, colour palettes always expand to BGR even when grayscale output is requested; native TurboJPEG performs the colour-to-gray conversion.
 
 Palette images use `clrUsed` entries when it is non-zero, otherwise `1 << bitCount` entries. Palette indices beyond the declared entries are treated as black. Alpha and colour management are not applied.
 
