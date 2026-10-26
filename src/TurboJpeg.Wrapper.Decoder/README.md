@@ -81,7 +81,7 @@ byte[] buffer = new byte[size];
 int written = TurboJpeg.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer);
 ```
 
-`GetBmpSize` performs the same header, EXIF, scaling, crop, and limit validation as decoding, so the destination buffer can be sized exactly. The span overloads return the number of bytes written and avoid allocating a new BMP array per call; pool and reuse the buffer when decoding many images.
+`GetBmpSize` performs the same header, EXIF, scaling, crop, and limit validation as decoding, so the destination buffer can be sized exactly. The span overloads return the number of bytes written and avoid allocating a new BMP array per call; pool and reuse the buffer when decoding many images. The destination must not overlap the JPEG source, because the decoder reads the JPEG while writing BMP bytes; an overlapping destination throws `ArgumentException`.
 
 ### Instance decoder
 
@@ -202,7 +202,7 @@ With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segme
 
 ## Errors
 
-- `ArgumentException`: empty input, invalid options, an unsupported scaling factor, an invalid crop region, or a destination buffer that is too small.
+- `ArgumentException`: empty input, invalid options, an unsupported scaling factor, an invalid crop region, a destination buffer that is too small, or a destination buffer that overlaps the JPEG source.
 - `ArgumentNullException`: a null options object passed to the static or instance options overload.
 - `ArgumentOutOfRangeException`: a negative crop offset, a non-positive crop dimension, or an invalid BMP bit depth.
 - `TurboJpegUnsupportedException`: the image precision is outside 2-16 bits.

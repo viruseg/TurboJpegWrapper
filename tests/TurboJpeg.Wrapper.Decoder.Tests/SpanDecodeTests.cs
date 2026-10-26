@@ -69,6 +69,76 @@ public sealed class SpanDecodeTests
     }
 
     [Fact]
+    public void DecodeToBmp_Span_ExactOverlap_ThrowsAndLeavesBufferUntouched()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = LoadJpeg(0);
+        var options = new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 };
+        var size = decoder.GetBmpSize(jpeg, options);
+        var buffer = new byte[Math.Max(size, jpeg.Length)];
+        jpeg.CopyTo(buffer, 0);
+        var snapshot = buffer.ToArray();
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => decoder.DecodeToBmp(
+                buffer.AsSpan(0, jpeg.Length), options, buffer.AsSpan(0, size)));
+
+        Assert.Equal("destination", exception.ParamName);
+        Assert.Equal(snapshot, buffer);
+    }
+
+    [Fact]
+    public void DecodeToBmp_Span_PartialOverlap_ThrowsArgumentException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = LoadJpeg(0);
+        var options = new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 };
+        var size = decoder.GetBmpSize(jpeg, options);
+        var buffer = new byte[jpeg.Length + size];
+        jpeg.CopyTo(buffer, 0);
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => decoder.DecodeToBmp(
+                buffer.AsSpan(0, jpeg.Length), options, buffer.AsSpan(jpeg.Length - 1, size)));
+
+        Assert.Equal("destination", exception.ParamName);
+    }
+
+    [Fact]
+    public void DecodeToBmp_Span_AdjacentDestination_Decodes()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = LoadJpeg(0);
+        var options = new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 };
+        var expected = decoder.DecodeToBmp(jpeg, options);
+        var buffer = new byte[jpeg.Length + expected.Length];
+        jpeg.CopyTo(buffer, 0);
+
+        var written = decoder.DecodeToBmp(
+            buffer.AsSpan(0, jpeg.Length), options, buffer.AsSpan(jpeg.Length));
+
+        Assert.Equal(expected.Length, written);
+        Assert.Equal(expected, buffer.AsSpan(jpeg.Length).ToArray());
+    }
+
+    [Fact]
+    public void DecodeToBmp_StaticSpan_Overlap_ThrowsArgumentException()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = LoadJpeg(0);
+        var options = new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 };
+        var size = decoder.GetBmpSize(jpeg, options);
+        var buffer = new byte[Math.Max(size, jpeg.Length)];
+        jpeg.CopyTo(buffer, 0);
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => TurboJpeg.DecodeToBmp(
+                buffer.AsSpan(0, jpeg.Length), options, buffer.AsSpan(0, size)));
+
+        Assert.Equal("destination", exception.ParamName);
+    }
+
+    [Fact]
     public void StaticApi_GetBmpSizeAndSpanDecode_Match()
     {
         var jpeg = TestFixtures.Load("baseline-444.jpg");

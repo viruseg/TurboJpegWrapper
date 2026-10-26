@@ -95,12 +95,18 @@ public static class TurboJpeg
     /// <param name="options">The decoding options.</param>
     /// <param name="destination">The destination buffer for the complete BMP file.</param>
     /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+    /// <remarks>
+    /// The required buffer size can be obtained with
+    /// <see cref="GetBmpSize(ReadOnlySpan{byte}, TurboJpegDecodeOptions)"/>.
+    /// <paramref name="destination"/> must not overlap <paramref name="jpeg"/>, because the
+    /// decoder reads the JPEG while writing BMP bytes.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported,
-    /// <paramref name="destination"/> is too small, or <see cref="TurboJpegDecodeOptions.Crop"/>
-    /// is invalid: the region is outside the scaled image, is not iMCU-aligned horizontally, or
-    /// the JPEG is lossless or has unknown subsampling.
+    /// <paramref name="destination"/> is too small or overlaps <paramref name="jpeg"/>, or
+    /// <see cref="TurboJpegDecodeOptions.Crop"/> is invalid: the region is outside the scaled image,
+    /// is not iMCU-aligned horizontally, or the JPEG is lossless or has unknown subsampling.
     /// </exception>
     /// <exception cref="TurboJpegUnsupportedException">
     /// The image precision is outside the supported 2-16 bit range.

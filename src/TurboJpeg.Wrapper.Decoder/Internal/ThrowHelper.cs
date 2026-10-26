@@ -23,6 +23,12 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowDestinationOverlapsSource() =>
+        throw new ArgumentException(
+            "The destination must not overlap the JPEG source buffer.", "destination");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ThrowBmpBitDepthOutOfRange(
         string paramName, TurboJpegBmpBitDepth value, string? message = BmpBitDepthMessage) =>
         throw new ArgumentOutOfRangeException(paramName, value, message);
