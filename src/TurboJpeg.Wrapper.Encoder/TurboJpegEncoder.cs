@@ -194,6 +194,8 @@ public sealed class TurboJpegEncoder : IDisposable
         return CalculateMaxJpegSize(in info, options);
     }
 
+    internal bool IsDisposed => _handle is null;
+
     /// <summary>Releases the native TurboJPEG handle.</summary>
     public void Dispose()
     {
