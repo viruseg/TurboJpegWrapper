@@ -89,14 +89,147 @@ public sealed class TurboJpegEncoder : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ThrowIfDisposed();
 
+        var info = ReadBmp(bmp);
+
+        // The worst-case size is computed before any native state changes; an over-limit
+        // image is a caller error, not a native failure that should recreate the handle.
+        var maxSize = CalculateMaxJpegSize(in info, options);
+        var worstCase = ArrayPool<byte>.Shared.Rent(maxSize);
+        try
+        {
+            // The rented array may be larger than requested; its full capacity is the
+            // destination size, so NOREALLOC can never reallocate.
+            var written = EncodeCore(bmp, options, in info, worstCase);
+
+            var result = GC.AllocateUninitializedArray<byte>(written);
+            worstCase.AsSpan(0, written).CopyTo(result);
+            return result;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(worstCase);
+        }
+    }
+
+    /// <summary>Encodes a BMP image into a caller-provided JPEG buffer using the specified options.</summary>
+    /// <param name="bmp">The complete BMP file contents.</param>
+    /// <param name="options">The encoding options.</param>
+    /// <param name="destination">The destination buffer for the complete JPEG file contents.</param>
+    /// <returns>The number of bytes written to <paramref name="destination"/>.</returns>
+    /// <remarks>
+    /// The required buffer size can be obtained with
+    /// <see cref="GetMaxJpegSize(ReadOnlySpan{byte}, TurboJpegEncodeOptions)"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="bmp"/> is empty, is not a supported BMP file, or
+    /// <paramref name="destination"/> is too small.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The BMP uses an encoding that this library does not support.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The worst-case JPEG size exceeds the maximum array length.
+    /// </exception>
+    /// <exception cref="TurboJpegException">TurboJPEG could not encode the image.</exception>
+    public int EncodeToJpeg(
+        ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options, Span<byte> destination)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ThrowIfDisposed();
+
+        var info = ReadBmp(bmp);
+        var maxSize = CalculateMaxJpegSize(in info, options);
+        if (destination.Length < maxSize)
+        {
+            ThrowHelper.ThrowDestinationTooSmall(maxSize);
+        }
+
+        return EncodeCore(bmp, options, in info, destination);
+    }
+
+    /// <summary>Gets the maximum JPEG size that <see cref="EncodeToJpeg(ReadOnlySpan{byte})"/> could produce using the encoder's default options.</summary>
+    /// <param name="bmp">The complete BMP file contents.</param>
+    /// <returns>The maximum possible JPEG file size in bytes.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The BMP uses an encoding that this library does not support.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The worst-case JPEG size exceeds the maximum array length.
+    /// </exception>
+    public int GetMaxJpegSize(ReadOnlySpan<byte> bmp) => GetMaxJpegSize(bmp, _defaultOptions);
+
+    /// <summary>Gets the maximum JPEG size that <see cref="EncodeToJpeg(ReadOnlySpan{byte}, TurboJpegEncodeOptions)"/> could produce using the specified options.</summary>
+    /// <param name="bmp">The complete BMP file contents.</param>
+    /// <param name="options">The encoding options.</param>
+    /// <returns>The maximum possible JPEG file size in bytes.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="bmp"/> is empty or is not a supported BMP file.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The encoder has been disposed.</exception>
+    /// <exception cref="TurboJpegUnsupportedException">
+    /// The BMP uses an encoding that this library does not support.
+    /// </exception>
+    /// <exception cref="TurboJpegImageTooLargeException">
+    /// The worst-case JPEG size exceeds the maximum array length.
+    /// </exception>
+    public int GetMaxJpegSize(ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ThrowIfDisposed();
+
+        var info = ReadBmp(bmp);
+        return CalculateMaxJpegSize(in info, options);
+    }
+
+    /// <summary>Releases the native TurboJPEG handle.</summary>
+    public void Dispose()
+    {
+        _handle?.Dispose();
+        _handle = null;
+    }
+
+    private static BmpInfo ReadBmp(ReadOnlySpan<byte> bmp)
+    {
         if (bmp.IsEmpty)
         {
             ThrowHelper.ThrowBmpEmpty();
         }
 
-        var info = BmpReader.Read(bmp);
-        var grayscaleOutput = options.Colorspace == TurboJpegColorspace.Grayscale
-            || options.Subsampling == TurboJpegSubsampling.Grayscale;
+        return BmpReader.Read(bmp);
+    }
+
+    private static bool IsGrayscaleOutput(TurboJpegEncodeOptions options) =>
+        options.Colorspace == TurboJpegColorspace.Grayscale
+        || options.Subsampling == TurboJpegSubsampling.Grayscale;
+
+    private static int ResolveEffectiveSubsampling(TurboJpegEncodeOptions options) =>
+        IsGrayscaleOutput(options)
+            ? (int)TurboJpegSubsampling.Grayscale
+            : (int)options.Subsampling;
+
+    private static int CalculateMaxJpegSize(
+        in BmpInfo info, TurboJpegEncodeOptions options) =>
+        SizeCalculator.GetMaxJpegSize(
+            info.Width, info.Height, ResolveEffectiveSubsampling(options));
+
+    /// <summary>
+    /// Compresses validated BMP pixels directly into <paramref name="destination"/>. The caller
+    /// has already parsed the BMP and verified that the destination is large enough.
+    /// </summary>
+    private int EncodeCore(
+        ReadOnlySpan<byte> bmp,
+        TurboJpegEncodeOptions options,
+        in BmpInfo info,
+        Span<byte> destination)
+    {
+        var grayscaleOutput = IsGrayscaleOutput(options);
         var pixels = BmpPixelConverter.Convert(bmp, in info, grayscaleOutput);
         try
         {
@@ -107,64 +240,39 @@ public sealed class TurboJpegEncoder : IDisposable
             }
 
             var nativeHandle = handle.DangerousGetHandle();
-            var effectiveSubsampling = grayscaleOutput
-                ? (int)TurboJpegSubsampling.Grayscale
-                : (int)options.Subsampling;
+            var effectiveSubsampling = ResolveEffectiveSubsampling(options);
             var colorspace = ResolveColorspace(options.Colorspace, grayscaleOutput);
             var density = ResolveDensity(in info, options);
 
-            // The worst-case size is computed before any native state changes; an over-limit
-            // image is a caller error, not a native failure that should recreate the handle.
-            var maxSize = TurboJpegNative.GetMaxJpegSize(
-                info.Width, info.Height, effectiveSubsampling);
-            var worstCase = ArrayPool<byte>.Shared.Rent(maxSize);
             try
             {
-                try
-                {
-                    ApplyParameters(
-                        nativeHandle,
-                        options,
-                        pixels.BottomUp,
-                        effectiveSubsampling,
-                        colorspace,
-                        density);
+                ApplyParameters(
+                    nativeHandle,
+                    options,
+                    pixels.BottomUp,
+                    effectiveSubsampling,
+                    colorspace,
+                    density);
 
-                    var written = TurboJpegNative.Compress(
-                        nativeHandle,
-                        pixels.Data,
-                        info.Width,
-                        pixels.Pitch,
-                        info.Height,
-                        pixels.PixelFormat,
-                        worstCase);
-
-                    var result = GC.AllocateUninitializedArray<byte>(written);
-                    worstCase.AsSpan(0, written).CopyTo(result);
-                    return result;
-                }
-                catch (TurboJpegException)
-                {
-                    RecoverAfterNativeFailure();
-                    throw;
-                }
+                return TurboJpegNative.Compress(
+                    nativeHandle,
+                    pixels.Data,
+                    info.Width,
+                    pixels.Pitch,
+                    info.Height,
+                    pixels.PixelFormat,
+                    destination);
             }
-            finally
+            catch (TurboJpegException)
             {
-                ArrayPool<byte>.Shared.Return(worstCase);
+                RecoverAfterNativeFailure();
+                throw;
             }
         }
         finally
         {
             pixels.Release();
         }
-    }
-
-    /// <summary>Releases the native TurboJPEG handle.</summary>
-    public void Dispose()
-    {
-        _handle?.Dispose();
-        _handle = null;
     }
 
     private static int ResolveColorspace(TurboJpegColorspace colorspace, bool grayscaleOutput)

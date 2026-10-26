@@ -69,26 +69,6 @@ internal static unsafe class TurboJpegNative
             innerException, overridePath);
     }
 
-    /// <summary>Returns the worst-case JPEG size for the given image and subsampling scheme.</summary>
-    /// <exception cref="TurboJpegImageTooLargeException">
-    /// The native size is zero or exceeds the maximum array length.
-    /// </exception>
-    internal static int GetMaxJpegSize(int width, int height, int subsampling)
-    {
-        var size = TurboJpegNativeApi.JPEGBufSize(width, height, subsampling);
-        if (size == 0)
-        {
-            ThrowHelper.ThrowJpegSizeZero(width, height);
-        }
-
-        if (size > (nuint)Array.MaxLength)
-        {
-            ThrowHelper.ThrowJpegTooLarge(width, height, size);
-        }
-
-        return (int)size;
-    }
-
     /// <summary>Compresses the source pixels and returns the number of JPEG bytes written.</summary>
     /// <exception cref="TurboJpegException">TurboJPEG reported an error.</exception>
     internal static int Compress(

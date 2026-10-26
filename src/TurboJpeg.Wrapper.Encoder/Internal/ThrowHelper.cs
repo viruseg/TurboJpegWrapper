@@ -19,6 +19,12 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowDestinationTooSmall(int requiredBytes) =>
+        throw new ArgumentException(
+            $"The destination must be at least {requiredBytes} bytes long.", "destination");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ThrowJpegSizeZero(int width, int height) =>
         throw new TurboJpegImageTooLargeException(
             $"TurboJPEG reported a zero worst-case JPEG size for a {width}x{height} image.");
