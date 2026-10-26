@@ -38,6 +38,18 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowRestartOptionsConflict() =>
+        throw new ArgumentException(
+            "RestartBlocks and RestartRows cannot both be non-zero.", "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowLosslessRestartBlocks() =>
+        throw new ArgumentException(
+            "RestartBlocks must be zero when lossless compression is enabled.", "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void Throw(Exception exception) =>
         throw exception;
 }

@@ -32,6 +32,8 @@ public sealed class TurboJpegEncoder : IDisposable
     private int _appliedOptimize = UnsetParameter;
     private int _appliedProgressive = UnsetParameter;
     private int _appliedArithmetic = UnsetParameter;
+    private int _appliedLosslessPsv = UnsetParameter;
+    private int _appliedLosslessPt = UnsetParameter;
     private int _appliedRestartBlocks = UnsetParameter;
     private int _appliedRestartRows = UnsetParameter;
     private int _appliedMaxMemory = UnsetParameter;
@@ -213,15 +215,39 @@ public sealed class TurboJpegEncoder : IDisposable
         options.Colorspace == TurboJpegColorspace.Grayscale
         || options.Subsampling == TurboJpegSubsampling.Grayscale;
 
-    private static int ResolveEffectiveSubsampling(TurboJpegEncodeOptions options) =>
-        IsGrayscaleOutput(options)
+    private static int ResolveEffectiveSubsampling(TurboJpegEncodeOptions options)
+    {
+        if (options.Lossless)
+        {
+            // Lossless compression never subsamples, so size the buffer for 4:4:4.
+            return (int)TurboJpegSubsampling.Yuv444;
+        }
+
+        return IsGrayscaleOutput(options)
             ? (int)TurboJpegSubsampling.Grayscale
             : (int)options.Subsampling;
+    }
 
     private static int CalculateMaxJpegSize(
-        in BmpInfo info, TurboJpegEncodeOptions options) =>
-        SizeCalculator.GetMaxJpegSize(
+        in BmpInfo info, TurboJpegEncodeOptions options)
+    {
+        ValidateOptions(options);
+        return SizeCalculator.GetMaxJpegSize(
             info.Width, info.Height, ResolveEffectiveSubsampling(options));
+    }
+
+    private static void ValidateOptions(TurboJpegEncodeOptions options)
+    {
+        if (options.RestartBlocks != 0 && options.RestartRows != 0)
+        {
+            ThrowHelper.ThrowRestartOptionsConflict();
+        }
+
+        if (options.Lossless && options.RestartBlocks != 0)
+        {
+            ThrowHelper.ThrowLosslessRestartBlocks();
+        }
+    }
 
     /// <summary>
     /// Compresses validated BMP pixels directly into <paramref name="destination"/>. The caller
@@ -233,7 +259,7 @@ public sealed class TurboJpegEncoder : IDisposable
         in BmpInfo info,
         Span<byte> destination)
     {
-        var grayscaleOutput = IsGrayscaleOutput(options);
+        var grayscaleOutput = !options.Lossless && IsGrayscaleOutput(options);
         var pixels = BmpPixelConverter.Convert(bmp, in info, grayscaleOutput);
         try
         {
@@ -344,8 +370,7 @@ public sealed class TurboJpegEncoder : IDisposable
 
         if (!options.Lossless)
         {
-            // Lossless parameters are applied by Task 9; lossy-only parameters must not
-            // reach the native handle in lossless mode.
+            // Start from lossy mode, then apply every effective lossy parameter.
             ApplyParameter(handle, TurboJpegNativeApi.ParamLossless, 0, ref _appliedLossless);
             ApplyParameter(
                 handle, TurboJpegNativeApi.ParamQuality, options.Quality, ref _appliedQuality);
@@ -368,14 +393,44 @@ public sealed class TurboJpegEncoder : IDisposable
                 handle, TurboJpegNativeApi.ParamArithmetic,
                 options.ArithmeticCoding ? 1 : 0, ref _appliedArithmetic);
         }
+        else
+        {
+            // Stale lossy flags make tj3Set(LOSSLESS, 1) fail, so clear them first.
+            ApplyParameter(handle, TurboJpegNativeApi.ParamProgressive, 0, ref _appliedProgressive);
+            ApplyParameter(handle, TurboJpegNativeApi.ParamArithmetic, 0, ref _appliedArithmetic);
+            ApplyParameter(handle, TurboJpegNativeApi.ParamOptimize, 0, ref _appliedOptimize);
+            ApplyParameter(handle, TurboJpegNativeApi.ParamFastDct, 0, ref _appliedFastDct);
+            ApplyParameter(handle, TurboJpegNativeApi.ParamLossless, 1, ref _appliedLossless);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamLosslessPsv,
+                options.LosslessPredictor, ref _appliedLosslessPsv);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamLosslessPt,
+                options.LosslessPointTransform, ref _appliedLosslessPt);
+        }
 
-        // Setting either restart interval clears the other, so apply rows before blocks when
-        // rows are zero (the Task 6 default) to leave both at zero deterministically.
-        ApplyParameter(handle, TurboJpegNativeApi.ParamRestartRows, 0, ref _appliedRestartRows);
+        if (options.RestartRows > 0)
+        {
+            // Setting a non-zero restart interval clears the other one, so set the zero
+            // value first and the requested interval last.
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamRestartBlocks, 0, ref _appliedRestartBlocks);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamRestartRows,
+                options.RestartRows, ref _appliedRestartRows);
+        }
+        else
+        {
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamRestartRows, 0, ref _appliedRestartRows);
+            ApplyParameter(
+                handle, TurboJpegNativeApi.ParamRestartBlocks,
+                options.RestartBlocks, ref _appliedRestartBlocks);
+        }
+
         ApplyParameter(
-            handle, TurboJpegNativeApi.ParamRestartBlocks, 0, ref _appliedRestartBlocks);
-
-        ApplyParameter(handle, TurboJpegNativeApi.ParamMaxMemory, 0, ref _appliedMaxMemory);
+            handle, TurboJpegNativeApi.ParamMaxMemory,
+            options.MaxMemoryMegabytes, ref _appliedMaxMemory);
 
         var (densityX, densityY, densityUnits) = density;
         ApplyParameter(handle, TurboJpegNativeApi.ParamXDensity, densityX, ref _appliedDensityX);
@@ -429,6 +484,8 @@ public sealed class TurboJpegEncoder : IDisposable
         _appliedOptimize = UnsetParameter;
         _appliedProgressive = UnsetParameter;
         _appliedArithmetic = UnsetParameter;
+        _appliedLosslessPsv = UnsetParameter;
+        _appliedLosslessPt = UnsetParameter;
         _appliedRestartBlocks = UnsetParameter;
         _appliedRestartRows = UnsetParameter;
         _appliedMaxMemory = UnsetParameter;
