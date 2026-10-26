@@ -177,6 +177,27 @@ public sealed class CmykTests
         Assert.Equal((255, 255, 0, 255), BmpTestHelpers.Pixel(bmp, 0, 3));
     }
 
+    [Theory]
+    [InlineData("cmyk12.jpg")]
+    [InlineData("cmyk16.jpg")]
+    public void DecodeToBmp_HighPrecisionCmyk_WithAutoOrient_ProducesExpectedColors(string fixture)
+    {
+        var jpeg = JpegPatcher.WithExifOrientation(TestFixtures.Load(fixture), 6);
+
+        var bmp = new TurboJpegDecoder().DecodeToBmp(jpeg, new TurboJpegDecodeOptions
+        {
+            AutoOrient = true
+        });
+
+        Assert.Equal(1, BmpTestHelpers.Width(bmp));
+        Assert.Equal(4, BmpTestHelpers.Height(bmp));
+        Assert.Equal(32, BmpTestHelpers.BitsPerPixel(bmp));
+        Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(bmp, 0, 0));
+        Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(bmp, 0, 1));
+        Assert.Equal((0, 0, 255, 255), BmpTestHelpers.Pixel(bmp, 0, 2));
+        Assert.Equal((255, 255, 0, 255), BmpTestHelpers.Pixel(bmp, 0, 3));
+    }
+
     [Fact]
     public void DecodeToBmp_CmykWithAutoOrient_Works()
     {
