@@ -40,6 +40,25 @@ public sealed class WarningPolicyTests
             decoder.DecodeToBmp(new byte[] { 1, 2, 3, 4 }, tolerant));
 
         Assert.True(ex.IsFatal);
+        Assert.Contains("Not a JPEG file", ex.Message);
+    }
+
+    [Fact]
+    public void DecodeToBmp_MaxMemoryExceeded_Tolerant_StillThrowsFatal()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var jpeg = TestFixtures.Load("progressive.jpg");
+        JpegPatcher.SetDimensions(jpeg, 1024, 1024);
+        var tolerant = new TurboJpegDecodeOptions
+        {
+            StopOnWarning = false,
+            MaxMemoryMegabytes = 1,
+        };
+
+        var ex = Assert.Throws<TurboJpegException>(() => decoder.DecodeToBmp(jpeg, tolerant));
+
+        Assert.True(ex.IsFatal);
+        Assert.Contains("memory limit", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
