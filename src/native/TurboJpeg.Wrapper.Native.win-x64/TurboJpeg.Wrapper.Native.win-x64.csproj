@@ -4,8 +4,8 @@
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <PackageId>TurboJpeg.Wrapper.Decoder.Native.win-x64</PackageId>
-    <Description>TurboJPEG 3.2.0 native library for Windows x64, used by TurboJpeg.Wrapper.Decoder.</Description>
+    <PackageId>TurboJpeg.Wrapper.Native.win-x64</PackageId>
+    <Description>TurboJPEG 3.2.0 native library for Windows x64, used by TurboJpeg.Wrapper.Decoder and TurboJpeg.Wrapper.Encoder.</Description>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\..\native\win-x64\turbojpeg.dll"

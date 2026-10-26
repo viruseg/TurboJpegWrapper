@@ -4,15 +4,15 @@
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <PackageId>TurboJpeg.Wrapper.Decoder.Native.win-arm64</PackageId>
-    <Description>TurboJPEG 3.2.0 native library for Windows ARM64, used by TurboJpeg.Wrapper.Decoder.</Description>
+    <PackageId>TurboJpeg.Wrapper.Native.linux-x64</PackageId>
+    <Description>TurboJPEG 3.2.0 native library for Linux x64, used by TurboJpeg.Wrapper.Decoder and TurboJpeg.Wrapper.Encoder.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\..\..\native\win-arm64\turbojpeg.dll"
-          Link="runtimes\win-arm64\native\turbojpeg.dll"
+    <None Include="..\..\..\native\linux-x64\libturbojpeg.so"
+          Link="runtimes\linux-x64\native\libturbojpeg.so"
           CopyToOutputDirectory="PreserveNewest"
           Pack="true"
-          PackagePath="runtimes\win-arm64\native\" />
+          PackagePath="runtimes\linux-x64\native\" />
     <None Include="..\..\..\native\THIRD-PARTY-NOTICES.md"
           Link="THIRD-PARTY-NOTICES.md"
           Pack="true"

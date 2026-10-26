@@ -9,11 +9,11 @@ mkdir -p "$output"
 
 projects=(
   "src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj"
-  "src/native/TurboJpeg.Wrapper.Decoder.Native.win-x64/TurboJpeg.Wrapper.Decoder.Native.win-x64.csproj"
-  "src/native/TurboJpeg.Wrapper.Decoder.Native.win-arm64/TurboJpeg.Wrapper.Decoder.Native.win-arm64.csproj"
-  "src/native/TurboJpeg.Wrapper.Decoder.Native.linux-x64/TurboJpeg.Wrapper.Decoder.Native.linux-x64.csproj"
-  "src/native/TurboJpeg.Wrapper.Decoder.Native.linux-arm64/TurboJpeg.Wrapper.Decoder.Native.linux-arm64.csproj"
-  "src/native/TurboJpeg.Wrapper.Decoder.Native.osx-universal/TurboJpeg.Wrapper.Decoder.Native.osx-universal.csproj"
+  "src/native/TurboJpeg.Wrapper.Native.win-x64/TurboJpeg.Wrapper.Native.win-x64.csproj"
+  "src/native/TurboJpeg.Wrapper.Native.win-arm64/TurboJpeg.Wrapper.Native.win-arm64.csproj"
+  "src/native/TurboJpeg.Wrapper.Native.linux-x64/TurboJpeg.Wrapper.Native.linux-x64.csproj"
+  "src/native/TurboJpeg.Wrapper.Native.linux-arm64/TurboJpeg.Wrapper.Native.linux-arm64.csproj"
+  "src/native/TurboJpeg.Wrapper.Native.osx-universal/TurboJpeg.Wrapper.Native.osx-universal.csproj"
 )
 
 for project in "${projects[@]}"; do

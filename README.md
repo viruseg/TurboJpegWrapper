@@ -16,16 +16,16 @@ The managed package contains no native code. Add it together with exactly one na
 
 ```bash
 dotnet add package TurboJpeg.Wrapper.Decoder --prerelease
-dotnet add package TurboJpeg.Wrapper.Decoder.Native.win-x64 --prerelease
+dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 ```
 
 | Runtime | Native package |
 | --- | --- |
-| `win-x64` | `TurboJpeg.Wrapper.Decoder.Native.win-x64` |
-| `win-arm64` | `TurboJpeg.Wrapper.Decoder.Native.win-arm64` |
-| `linux-x64` | `TurboJpeg.Wrapper.Decoder.Native.linux-x64` |
-| `linux-arm64` | `TurboJpeg.Wrapper.Decoder.Native.linux-arm64` |
-| `osx-x64`, `osx-arm64` | `TurboJpeg.Wrapper.Decoder.Native.osx-universal` |
+| `win-x64` | `TurboJpeg.Wrapper.Native.win-x64` |
+| `win-arm64` | `TurboJpeg.Wrapper.Native.win-arm64` |
+| `linux-x64` | `TurboJpeg.Wrapper.Native.linux-x64` |
+| `linux-arm64` | `TurboJpeg.Wrapper.Native.linux-arm64` |
+| `osx-x64`, `osx-arm64` | `TurboJpeg.Wrapper.Native.osx-universal` |
 
 Packages are published as prereleases, so `--prerelease` is required. The package and assembly names are `TurboJpeg.Wrapper.Decoder`; the C# namespace is `TurboJpegWrapper.Decoder`.
 
@@ -167,7 +167,7 @@ Native libraries are distributed as separate runtime packages. Each native packa
 | `linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
 | `osx-x64`, `osx-arm64` | `runtimes/osx/native/libturbojpeg.dylib` |
 
-The macOS library is a universal binary (x86_64 + arm64) supplied once by the `TurboJpeg.Wrapper.Decoder.Native.osx-universal` package. The loader resolves the base `osx` runtime folder on both macOS architectures.
+The macOS library is a universal binary (x86_64 + arm64) supplied once by the `TurboJpeg.Wrapper.Native.osx-universal` package. The loader resolves the base `osx` runtime folder on both macOS architectures.
 
 The bundled Linux libraries are glibc builds; for musl/Alpine, supply a musl build through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
 
@@ -199,14 +199,14 @@ Build all six packages with:
 bash scripts/pack-packages.sh
 ```
 
-The script writes to `artifacts/packages` and produces version `3.2.0-pre.1`, which comes from `Directory.Build.props`:
+The script writes to `artifacts/packages` and produces version `3.2.0-pre.2`, which comes from `Directory.Build.props`:
 
-- `TurboJpeg.Wrapper.Decoder.3.2.0-pre.1.nupkg`: managed assembly, `README.md`, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; no native assets and no native package dependencies.
-- `TurboJpeg.Wrapper.Decoder.Native.win-x64.3.2.0-pre.1.nupkg`
-- `TurboJpeg.Wrapper.Decoder.Native.win-arm64.3.2.0-pre.1.nupkg`
-- `TurboJpeg.Wrapper.Decoder.Native.linux-x64.3.2.0-pre.1.nupkg`
-- `TurboJpeg.Wrapper.Decoder.Native.linux-arm64.3.2.0-pre.1.nupkg`
-- `TurboJpeg.Wrapper.Decoder.Native.osx-universal.3.2.0-pre.1.nupkg`
+- `TurboJpeg.Wrapper.Decoder.3.2.0-pre.2.nupkg`: managed assembly, `README.md`, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; no native assets and no native package dependencies.
+- `TurboJpeg.Wrapper.Native.win-x64.3.2.0-pre.2.nupkg`
+- `TurboJpeg.Wrapper.Native.win-arm64.3.2.0-pre.2.nupkg`
+- `TurboJpeg.Wrapper.Native.linux-x64.3.2.0-pre.2.nupkg`
+- `TurboJpeg.Wrapper.Native.linux-arm64.3.2.0-pre.2.nupkg`
+- `TurboJpeg.Wrapper.Native.osx-universal.3.2.0-pre.2.nupkg`
 
 ## License and notices
 

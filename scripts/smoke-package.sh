@@ -58,7 +58,7 @@ cat > "$smoke_dir/Smoke.csproj" <<EOF
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="TurboJpeg.Wrapper.Decoder" Version="$version" />
-    <PackageReference Include="TurboJpeg.Wrapper.Decoder.Native.$native_suffix" Version="$version" />
+    <PackageReference Include="TurboJpeg.Wrapper.Native.$native_suffix" Version="$version" />
   </ItemGroup>
 </Project>
 EOF

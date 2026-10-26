@@ -4,8 +4,8 @@
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <PackageId>TurboJpeg.Wrapper.Decoder.Native.linux-arm64</PackageId>
-    <Description>TurboJPEG 3.2.0 native library for Linux ARM64, used by TurboJpeg.Wrapper.Decoder.</Description>
+    <PackageId>TurboJpeg.Wrapper.Native.linux-arm64</PackageId>
+    <Description>TurboJPEG 3.2.0 native library for Linux ARM64, used by TurboJpeg.Wrapper.Decoder and TurboJpeg.Wrapper.Encoder.</Description>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\..\native\linux-arm64\libturbojpeg.so"

@@ -36,7 +36,7 @@ main_nuspec="$(unzip -p "$main" "$(grep '\.nuspec$' <<<"$main_entries")")"
 if ! grep -q '<license type="file">LICENSE</license>' <<<"$main_nuspec"; then
   fail "managed package has no file-based LICENSE metadata"
 fi
-if grep -q 'dependency id="TurboJpeg.Wrapper.Decoder.Native.' <<<"$main_nuspec"; then
+if grep -q 'dependency id="TurboJpeg.Wrapper.Native.' <<<"$main_nuspec"; then
   fail "managed package depends on a native package"
 fi
 
@@ -67,10 +67,10 @@ check_native() {
   fi
 }
 
-check_native TurboJpeg.Wrapper.Decoder.Native.win-x64 runtimes/win-x64/native/turbojpeg.dll
-check_native TurboJpeg.Wrapper.Decoder.Native.win-arm64 runtimes/win-arm64/native/turbojpeg.dll
-check_native TurboJpeg.Wrapper.Decoder.Native.linux-x64 runtimes/linux-x64/native/libturbojpeg.so
-check_native TurboJpeg.Wrapper.Decoder.Native.linux-arm64 runtimes/linux-arm64/native/libturbojpeg.so
-check_native TurboJpeg.Wrapper.Decoder.Native.osx-universal runtimes/osx/native/libturbojpeg.dylib
+check_native TurboJpeg.Wrapper.Native.win-x64 runtimes/win-x64/native/turbojpeg.dll
+check_native TurboJpeg.Wrapper.Native.win-arm64 runtimes/win-arm64/native/turbojpeg.dll
+check_native TurboJpeg.Wrapper.Native.linux-x64 runtimes/linux-x64/native/libturbojpeg.so
+check_native TurboJpeg.Wrapper.Native.linux-arm64 runtimes/linux-arm64/native/libturbojpeg.so
+check_native TurboJpeg.Wrapper.Native.osx-universal runtimes/osx/native/libturbojpeg.dylib
 
 echo "verify-packages: ok ($version)"

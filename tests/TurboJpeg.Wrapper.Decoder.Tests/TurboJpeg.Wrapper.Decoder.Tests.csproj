@@ -22,15 +22,15 @@
     <ProjectReference Include="..\..\src\TurboJpeg.Wrapper.Decoder\TurboJpeg.Wrapper.Decoder.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Decoder.Native.win-x64\TurboJpeg.Wrapper.Decoder.Native.win-x64.csproj"
+    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Native.win-x64\TurboJpeg.Wrapper.Native.win-x64.csproj"
                       ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Decoder.Native.win-arm64\TurboJpeg.Wrapper.Decoder.Native.win-arm64.csproj"
+    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Native.win-arm64\TurboJpeg.Wrapper.Native.win-arm64.csproj"
                       ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Decoder.Native.linux-x64\TurboJpeg.Wrapper.Decoder.Native.linux-x64.csproj"
+    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Native.linux-x64\TurboJpeg.Wrapper.Native.linux-x64.csproj"
                       ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Decoder.Native.linux-arm64\TurboJpeg.Wrapper.Decoder.Native.linux-arm64.csproj"
+    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Native.linux-arm64\TurboJpeg.Wrapper.Native.linux-arm64.csproj"
                       ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Decoder.Native.osx-universal\TurboJpeg.Wrapper.Decoder.Native.osx-universal.csproj"
+    <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Native.osx-universal\TurboJpeg.Wrapper.Native.osx-universal.csproj"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>

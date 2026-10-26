@@ -4,8 +4,8 @@
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <PackageId>TurboJpeg.Wrapper.Decoder.Native.osx-universal</PackageId>
-    <Description>TurboJPEG 3.2.0 native library for macOS x64 and ARM64, used by TurboJpeg.Wrapper.Decoder.</Description>
+    <PackageId>TurboJpeg.Wrapper.Native.osx-universal</PackageId>
+    <Description>TurboJPEG 3.2.0 native library for macOS x64 and ARM64, used by TurboJpeg.Wrapper.Decoder and TurboJpeg.Wrapper.Encoder.</Description>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\..\native\osx-universal\libturbojpeg.dylib"
