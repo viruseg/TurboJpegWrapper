@@ -105,6 +105,50 @@ internal static class BmpBuilder
         return buffer;
     }
 
+    /// <summary>Builds a 32-bit BI_BITFIELDS BMP with caller-provided channel masks.</summary>
+    internal static byte[] Create32Bitfields(
+        int width,
+        int height,
+        Func<int, int, uint> sample,
+        uint redMask,
+        uint greenMask,
+        uint blueMask,
+        bool topDown = false)
+    {
+        var stride = GetStride(width, 32);
+        const int pixelOffset = FileHeaderSize + CoreDibHeaderSize + 12;
+        var buffer = new byte[checked(pixelOffset + stride * height)];
+
+        WriteHeader(
+            buffer,
+            width,
+            topDown ? -height : height,
+            bitCount: 32,
+            compression: 3,
+            pixelOffset,
+            CoreDibHeaderSize,
+            planes: 1,
+            clrUsed: 0,
+            ppmX: 0,
+            ppmY: 0,
+            redMask,
+            greenMask,
+            blueMask,
+            validSignature: true);
+
+        for (var y = 0; y < height; y++)
+        {
+            var row = pixelOffset + GetFileRow(y, height, topDown) * stride;
+            for (var x = 0; x < width; x++)
+            {
+                BinaryPrimitives.WriteUInt32LittleEndian(
+                    buffer.AsSpan(row + x * 4), sample(x, y));
+            }
+        }
+
+        return buffer;
+    }
+
     internal static byte[] CreatePalette8(
         int width,
         int height,
