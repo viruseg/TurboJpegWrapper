@@ -44,6 +44,34 @@ public sealed class StateIsolationTests
     }
 
     [Fact]
+    public void ReusedEncoder_DefaultAfterLossless_MatchesFreshInstance()
+    {
+        var bmp = BmpBuilder.Create24(35, 29, Gradient);
+        using var reused = new TurboJpegEncoder();
+
+        AssertMatchesFresh(reused, bmp, TurboJpegEncodeOptions.Default);
+        reused.EncodeToJpeg(bmp, new TurboJpegEncodeOptions { Lossless = true });
+
+        AssertMatchesFresh(reused, bmp, TurboJpegEncodeOptions.Default);
+    }
+
+    [Fact]
+    public void ReusedEncoder_GrayscaleAfterLossless_MatchesFreshInstance()
+    {
+        var bmp = BmpBuilder.Create24(35, 29, Gradient);
+        var grayscale = new TurboJpegEncodeOptions
+        {
+            Colorspace = TurboJpegColorspace.Grayscale,
+        };
+        using var reused = new TurboJpegEncoder();
+
+        AssertMatchesFresh(reused, bmp, grayscale);
+        reused.EncodeToJpeg(bmp, new TurboJpegEncodeOptions { Lossless = true });
+
+        AssertMatchesFresh(reused, bmp, grayscale);
+    }
+
+    [Fact]
     public void ReusedEncoder_DefaultAfterRestartOptions_MatchesFreshInstance()
     {
         var bmp = BmpBuilder.Create24(64, 64, Gradient);

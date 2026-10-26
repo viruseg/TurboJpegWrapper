@@ -202,6 +202,46 @@ public sealed class BmpReaderTests
     }
 
     [Theory]
+    [InlineData(52, 16)]
+    [InlineData(56, 16)]
+    [InlineData(108, 32)]
+    [InlineData(124, 32)]
+    public void Read_ExtendedDibWithBitfields_ReadsMasksAndLayout(int dibSize, int bitCount)
+    {
+        const int width = 2;
+        const int height = 2;
+        var stride = bitCount == 16 ? 4 : 8;
+        var pixelOffset = 14 + dibSize;
+        var totalLength = pixelOffset + stride * height;
+        var redMask = bitCount == 16 ? 0xF800u : 0x00FF0000u;
+        var greenMask = bitCount == 16 ? 0x07E0u : 0x0000FF00u;
+        var blueMask = bitCount == 16 ? 0x001Fu : 0x000000FFu;
+        var bmp = BmpBuilder.CreateRaw(
+            width: width,
+            height: height,
+            bitCount: bitCount,
+            compression: 3,
+            dibSize: dibSize,
+            pixelOffset: pixelOffset,
+            totalLength: totalLength,
+            redMask: redMask,
+            greenMask: greenMask,
+            blueMask: blueMask);
+
+        var info = BmpReader.Read(bmp);
+
+        Assert.Equal(width, info.Width);
+        Assert.Equal(height, info.Height);
+        Assert.Equal(bitCount, info.BitCount);
+        Assert.Equal(3u, info.Compression);
+        Assert.Equal(pixelOffset, info.PixelOffset);
+        Assert.Equal(stride, info.Stride);
+        Assert.Equal(redMask, info.RedMask);
+        Assert.Equal(greenMask, info.GreenMask);
+        Assert.Equal(blueMask, info.BlueMask);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(13)]
     [InlineData(53)]

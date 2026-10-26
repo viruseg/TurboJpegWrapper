@@ -45,6 +45,23 @@ public sealed class BufferApiTests
     }
 
     [Fact]
+    public void GetMaxJpegSize_LosslessNoise_ExactDestinationSucceeds()
+    {
+        var bmp = BmpBuilder.Create24(512, 512, Noise);
+        var options = new TurboJpegEncodeOptions { Lossless = true };
+        using var encoder = new TurboJpegEncoder();
+
+        var maxSize = encoder.GetMaxJpegSize(bmp, options);
+        var destination = new byte[maxSize];
+        var written = encoder.EncodeToJpeg(bmp, options, destination);
+        var expected = encoder.EncodeToJpeg(bmp, options);
+
+        Assert.InRange(written, 1, maxSize);
+        Assert.Equal(expected.Length, written);
+        Assert.True(destination.AsSpan(0, written).SequenceEqual(expected));
+    }
+
+    [Fact]
     public void GetMaxJpegSize_WithOptions_IsAtLeastEncodedLength()
     {
         var bmp = BmpBuilder.Create24(37, 29, Gradient);
@@ -220,6 +237,15 @@ public sealed class BufferApiTests
 
     private static (byte B, byte G, byte R) Gradient(int x, int y) =>
         ((byte)(x * 7 + y * 3), (byte)(x * 3 + y * 11), (byte)(x * 5 + y * 13));
+
+    private static (byte B, byte G, byte R) Noise(int x, int y)
+    {
+        var value = (uint)(x * 73856093 ^ y * 19349663);
+        value ^= value << 13;
+        value ^= value >> 17;
+        value ^= value << 5;
+        return ((byte)value, (byte)(value >> 8), (byte)(value >> 16));
+    }
 
     private static byte[] CreateBmp(string format) => format switch
     {

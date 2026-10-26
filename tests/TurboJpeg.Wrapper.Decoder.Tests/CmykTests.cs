@@ -65,6 +65,7 @@ public sealed class CmykTests
     }
 
     [Theory]
+    [InlineData(TurboJpegBmpBitDepth.Bpp32)]
     [InlineData(TurboJpegBmpBitDepth.Bpp8)]
     [InlineData(TurboJpegBmpBitDepth.Bpp24)]
     public void DecodeToBmp_CmykWideSpan_DoesNotWritePastBmpSize(
