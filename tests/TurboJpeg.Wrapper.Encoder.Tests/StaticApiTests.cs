@@ -115,6 +115,21 @@ public sealed class StaticApiTests
     }
 
     [Fact]
+    public void InvalidCrossPropertyOptions_ThrowFromStaticEncodeAndSizing()
+    {
+        var bmp = BmpBuilder.Create24(2, 2, Gradient);
+        var options = new TurboJpegEncodeOptions { RestartBlocks = 1, RestartRows = 1 };
+
+        var encode = Assert.Throws<ArgumentException>(
+            () => TurboJpeg.EncodeToJpeg(bmp, options));
+        var sizing = Assert.Throws<ArgumentException>(
+            () => TurboJpeg.GetMaxJpegSize(bmp, options));
+
+        Assert.Equal("options", encode.ParamName);
+        Assert.Equal("options", sizing.ParamName);
+    }
+
+    [Fact]
     public void GetMaxJpegSize_Static_MatchesInstanceResult()
     {
         var bmp = BmpBuilder.Create24(37, 29, Gradient);

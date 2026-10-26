@@ -270,7 +270,7 @@ public sealed class TurboJpegEncoder : IDisposable
             info.Width, info.Height, ResolveEffectiveSubsampling(options));
     }
 
-    private static void ValidateOptions(TurboJpegEncodeOptions options)
+    internal static void ValidateOptions(TurboJpegEncodeOptions options)
     {
         if (options.RestartBlocks != 0 && options.RestartRows != 0)
         {

@@ -55,6 +55,7 @@ public static class TurboJpeg
     public static byte[] EncodeToJpeg(ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+        TurboJpegEncoder.ValidateOptions(options);
 
         TurboJpegEncoder? encoder = null;
         try
@@ -110,6 +111,7 @@ public static class TurboJpeg
         ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options, Span<byte> destination)
     {
         ArgumentNullException.ThrowIfNull(options);
+        TurboJpegEncoder.ValidateOptions(options);
 
         TurboJpegEncoder? encoder = null;
         try
@@ -174,6 +176,7 @@ public static class TurboJpeg
     public static int GetMaxJpegSize(ReadOnlySpan<byte> bmp, TurboJpegEncodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+        TurboJpegEncoder.ValidateOptions(options);
 
         TurboJpegEncoder? encoder = null;
         try
