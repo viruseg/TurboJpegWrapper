@@ -110,15 +110,14 @@ public sealed class DecodeToBmpTests
     }
 
     [Fact]
-    public void DecodeToBmp_Precision12_ThrowsUnsupported()
+    public void DecodeToBmp_Precision12_Works()
     {
         using var decoder = new TurboJpegDecoder();
+        var bmp = decoder.DecodeToBmp(TestFixtures.Load("precision12.jpg"));
 
-        var exception = Assert.Throws<TurboJpegUnsupportedException>(
-            () => decoder.DecodeToBmp(TestFixtures.Load("precision12.jpg")));
-
-        Assert.Contains("precision", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("colorspace", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(TestFixtures.Width, BmpTestHelpers.Width(bmp));
+        Assert.Equal(TestFixtures.Height, BmpTestHelpers.Height(bmp));
+        Assert.Equal(32, BmpTestHelpers.BitsPerPixel(bmp));
     }
 
     [Fact]

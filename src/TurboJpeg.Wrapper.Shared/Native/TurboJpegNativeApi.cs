@@ -79,6 +79,24 @@ internal static unsafe partial class TurboJpegNativeApi
         int pitch,
         int pixelFormat);
 
+    [LibraryImport(LibraryName, EntryPoint = "tj3Decompress12")]
+    internal static partial int Decompress12(
+        nint handle,
+        byte* jpegBuf,
+        nuint jpegSize,
+        short* dstBuf,
+        int pitch,
+        int pixelFormat);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3Decompress16")]
+    internal static partial int Decompress16(
+        nint handle,
+        byte* jpegBuf,
+        nuint jpegSize,
+        ushort* dstBuf,
+        int pitch,
+        int pixelFormat);
+
     [LibraryImport(LibraryName, EntryPoint = "tj3Get")]
     internal static partial int Get(nint handle, int param);
 

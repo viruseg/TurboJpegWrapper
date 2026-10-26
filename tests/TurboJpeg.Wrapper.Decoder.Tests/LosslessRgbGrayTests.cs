@@ -28,6 +28,8 @@ public sealed class LosslessRgbGrayTests
     [InlineData("lossless-p4.jpg")]
     [InlineData("lossless-p7.jpg")]
     [InlineData("lossless-p8.jpg")]
+    [InlineData("lossless-p12.jpg")]
+    [InlineData("lossless-p16.jpg")]
     public void DecodeToBmp_LosslessRgbToBpp8_UsesManagedLuma(string fixture)
     {
         var bmp = Decode(fixture, new TurboJpegDecodeOptions
@@ -88,6 +90,9 @@ public sealed class LosslessRgbGrayTests
     [InlineData("gray-lossless-p4.jpg", 0, 34, 68, 136, 187, 255)]
     [InlineData("gray-lossless-p7.jpg", 0, 32, 64, 129, 191, 255)]
     [InlineData("gray-lossless-p8.jpg", 0, 32, 64, 128, 191, 255)]
+    [InlineData("gray-lossless-p9.jpg", 0, 32, 64, 128, 191, 255)]
+    [InlineData("gray-lossless-p12.jpg", 0, 32, 64, 128, 192, 255)]
+    [InlineData("gray-lossless-p16.jpg", 0, 32, 64, 128, 191, 255)]
     public void DecodeToBmp_LosslessGrayToBpp32_ExpandsChannels(
         string fixture, int band0, int band1, int band2, int band3, int band4, int band5)
     {
@@ -105,6 +110,9 @@ public sealed class LosslessRgbGrayTests
     [InlineData("gray-lossless-p4.jpg", 0, 34, 68, 136, 187, 255)]
     [InlineData("gray-lossless-p7.jpg", 0, 32, 64, 129, 191, 255)]
     [InlineData("gray-lossless-p8.jpg", 0, 32, 64, 128, 191, 255)]
+    [InlineData("gray-lossless-p9.jpg", 0, 32, 64, 128, 191, 255)]
+    [InlineData("gray-lossless-p12.jpg", 0, 32, 64, 128, 192, 255)]
+    [InlineData("gray-lossless-p16.jpg", 0, 32, 64, 128, 191, 255)]
     public void DecodeToBmp_LosslessGrayToBpp24_ExpandsChannels(
         string fixture, int band0, int band1, int band2, int band3, int band4, int band5)
     {

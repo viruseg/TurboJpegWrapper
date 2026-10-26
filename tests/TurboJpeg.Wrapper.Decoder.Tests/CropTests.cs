@@ -106,6 +106,17 @@ public sealed class CropTests
     }
 
     [Fact]
+    public void DecodeToBmp_12BitLossyCrop_Works()
+    {
+        var bmp = new TurboJpegDecoder().DecodeToBmp(
+            TestFixtures.Load("precision12.jpg"),
+            new TurboJpegDecodeOptions { Crop = new TurboJpegCrop(0, 0, 16, 16) });
+
+        Assert.Equal((16, 16), (BmpTestHelpers.Width(bmp), BmpTestHelpers.Height(bmp)));
+        Assert.Equal(32, BmpTestHelpers.BitsPerPixel(bmp));
+    }
+
+    [Fact]
     public void DecodeToBmp_LosslessCrop_ThrowsArgumentException()
     {
         using var decoder = new TurboJpegDecoder();

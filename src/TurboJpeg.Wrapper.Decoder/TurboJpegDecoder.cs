@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.InteropServices;
 using TurboJpegWrapper.Decoder.Internal;
 using TurboJpegWrapper.Decoder.Internal.Bmp;
 using TurboJpegWrapper.Decoder.Internal.Conversion;
@@ -291,18 +292,36 @@ public sealed class TurboJpegDecoder : IDisposable
             && bitDepth is TurboJpegBmpBitDepth.Bpp24 or TurboJpegBmpBitDepth.Bpp32)
         {
             pixelFormat = TurboJpegNativeApi.PixelFormatGray;
-            pipeline = DecodePipeline.GrayExpandFrom8;
+            pipeline = info.Precision switch
+            {
+                <= 8 => DecodePipeline.GrayExpandFrom8,
+                <= 12 => DecodePipeline.GrayExpandFrom12,
+                _ => DecodePipeline.GrayExpandFrom16,
+            };
         }
         else if (bitDepth == TurboJpegBmpBitDepth.Bpp8
             && info.IsLossless
             && info.Colorspace == TurboJpegColorspace.Rgb)
         {
             pixelFormat = TurboJpegNativeApi.PixelFormatBgr;
-            pipeline = DecodePipeline.RgbToGrayFrom8;
+            pipeline = info.Precision switch
+            {
+                <= 8 => DecodePipeline.RgbToGrayFrom8,
+                <= 12 => DecodePipeline.RgbToGrayFrom12,
+                _ => DecodePipeline.RgbToGrayFrom16,
+            };
         }
         else if (info.Precision is >= 2 and <= 7)
         {
             pipeline = DecodePipeline.Scale8InPlace;
+        }
+        else if (info.Precision is >= 9 and <= 12)
+        {
+            pipeline = DecodePipeline.Downscale12;
+        }
+        else if (info.Precision is >= 13 and <= 16)
+        {
+            pipeline = DecodePipeline.Downscale16;
         }
 
         var pixelsPerMeterX = BmpHeaderWriter.ToPixelsPerMeter(info.DensityX, info.DensityUnits);
@@ -351,39 +370,57 @@ public sealed class TurboJpegDecoder : IDisposable
 
         if (!plan.SwapsAxes)
         {
-            if (plan.Pipeline == DecodePipeline.RgbToGrayFrom8)
+            switch (plan.Pipeline)
             {
-                DecodeRgbToGrayToBmp(handle, jpeg, options, in plan, bmp, lut);
-            }
-            else if (plan.Pipeline == DecodePipeline.GrayExpandFrom8)
-            {
-                DecodeGrayExpandToBmp(handle, jpeg, options, in plan, bmp, lut);
-            }
-            else
-            {
-                if (!options.StopOnWarning)
-                {
-                    bmp[plan.PixelOffset..].Clear();
-                }
+                case DecodePipeline.RgbToGrayFrom8:
+                    DecodeRgbToGrayToBmp(handle, jpeg, options, in plan, bmp, lut);
+                    break;
 
-                Decompress8Into(
-                    handle,
-                    jpeg,
-                    bmp[plan.PixelOffset..],
-                    plan.OutputStride,
-                    plan.PixelFormat,
-                    tolerateWarnings: !options.StopOnWarning);
+                case DecodePipeline.GrayExpandFrom8:
+                    DecodeGrayExpandToBmp(handle, jpeg, options, in plan, bmp, lut);
+                    break;
 
-                if (plan.Pipeline == DecodePipeline.Scale8InPlace)
-                {
-                    ScaleRowsInPlace(
+                case DecodePipeline.RgbToGrayFrom12:
+                case DecodePipeline.RgbToGrayFrom16:
+                    DecodeHighPrecisionRgbToGrayToBmp(handle, jpeg, options, in plan, bmp);
+                    break;
+
+                case DecodePipeline.GrayExpandFrom12:
+                case DecodePipeline.GrayExpandFrom16:
+                    DecodeHighPrecisionGrayExpandToBmp(handle, jpeg, options, in plan, bmp);
+                    break;
+
+                case DecodePipeline.Downscale12:
+                case DecodePipeline.Downscale16:
+                    DecodeHighPrecisionToBmp(handle, jpeg, options, in plan, bmp);
+                    break;
+
+                default:
+                    if (!options.StopOnWarning)
+                    {
+                        bmp[plan.PixelOffset..].Clear();
+                    }
+
+                    Decompress8Into(
+                        handle,
+                        jpeg,
                         bmp[plan.PixelOffset..],
-                        plan.Width,
-                        plan.Height,
                         plan.OutputStride,
-                        plan.BytesPerPixel,
-                        lut!);
-                }
+                        plan.PixelFormat,
+                        tolerateWarnings: !options.StopOnWarning);
+
+                    if (plan.Pipeline == DecodePipeline.Scale8InPlace)
+                    {
+                        ScaleRowsInPlace(
+                            bmp[plan.PixelOffset..],
+                            plan.Width,
+                            plan.Height,
+                            plan.OutputStride,
+                            plan.BytesPerPixel,
+                            lut!);
+                    }
+
+                    break;
             }
 
             if (plan.Orientation is ExifOrientation.FlipHorizontal or ExifOrientation.Rotate180)
@@ -399,16 +436,30 @@ public sealed class TurboJpegDecoder : IDisposable
             return;
         }
 
-        if (plan.Pipeline == DecodePipeline.RgbToGrayFrom8)
+        switch (plan.Pipeline)
         {
-            DecodeRgbToGrayWithOrientation(handle, jpeg, options, in plan, bmp, lut);
-            return;
-        }
+            case DecodePipeline.RgbToGrayFrom8:
+                DecodeRgbToGrayWithOrientation(handle, jpeg, options, in plan, bmp, lut);
+                return;
 
-        if (plan.Pipeline == DecodePipeline.GrayExpandFrom8)
-        {
-            DecodeGrayExpandWithOrientation(handle, jpeg, options, in plan, bmp, lut);
-            return;
+            case DecodePipeline.GrayExpandFrom8:
+                DecodeGrayExpandWithOrientation(handle, jpeg, options, in plan, bmp, lut);
+                return;
+
+            case DecodePipeline.RgbToGrayFrom12:
+            case DecodePipeline.RgbToGrayFrom16:
+                DecodeHighPrecisionRgbToGrayWithOrientation(handle, jpeg, options, in plan, bmp);
+                return;
+
+            case DecodePipeline.GrayExpandFrom12:
+            case DecodePipeline.GrayExpandFrom16:
+                DecodeHighPrecisionGrayExpandWithOrientation(handle, jpeg, options, in plan, bmp);
+                return;
+
+            case DecodePipeline.Downscale12:
+            case DecodePipeline.Downscale16:
+                DecodeHighPrecisionWithOrientation(handle, jpeg, options, in plan, bmp);
+                return;
         }
 
         var sourcePitch = checked(plan.Width * plan.BytesPerPixel);
@@ -592,6 +643,379 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
+    private static unsafe void DecodeHighPrecisionToBmp(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var rowSamples = checked(plan.Width * plan.BytesPerPixel);
+        var sampleCount = checked(rowSamples * plan.Height);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(sampleCount * 2));
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                sampleCount,
+                plan.Precision,
+                rowSamples,
+                plan.PixelFormat,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var destination = bmp[plan.PixelOffset..];
+            for (var y = 0; y < plan.Height; y++)
+            {
+                var row = destination.Slice(y * plan.OutputStride, rowSamples);
+                DownscaleHighPrecisionRow(
+                    samples, y * rowSamples, rowSamples, plan.Precision, row);
+
+                if (plan.BytesPerPixel == 4)
+                {
+                    PrecisionScale.ForceOpaqueAlpha(row, plan.Width);
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecisionWithOrientation(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var rowSamples = checked(plan.Width * plan.BytesPerPixel);
+        var sampleCount = checked(rowSamples * plan.Height);
+        var outputWithPadding = checked(sampleCount + 4);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(sampleCount * 2));
+        var output = ArrayPool<byte>.Shared.Rent(outputWithPadding);
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                sampleCount,
+                plan.Precision,
+                rowSamples,
+                plan.PixelFormat,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var outputPixels = output.AsSpan(0, outputWithPadding);
+            for (var y = 0; y < plan.Height; y++)
+            {
+                DownscaleHighPrecisionRow(
+                    samples,
+                    y * rowSamples,
+                    rowSamples,
+                    plan.Precision,
+                    outputPixels.Slice(y * rowSamples, rowSamples));
+            }
+
+            if (plan.BytesPerPixel == 4)
+            {
+                PrecisionScale.ForceOpaqueAlpha(
+                    outputPixels[..sampleCount], plan.Width * plan.Height);
+            }
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                outputPixels,
+                plan.Width,
+                plan.Height,
+                plan.BytesPerPixel,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(output);
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecisionRgbToGrayToBmp(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var rowSamples = checked(plan.Width * 3);
+        var sampleCount = checked(rowSamples * plan.Height);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(sampleCount * 2));
+        var bgrRowBuffer = ArrayPool<byte>.Shared.Rent(rowSamples);
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                sampleCount,
+                plan.Precision,
+                rowSamples,
+                TurboJpegNativeApi.PixelFormatBgr,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var bgrRow = bgrRowBuffer.AsSpan(0, rowSamples);
+            var destination = bmp[plan.PixelOffset..];
+
+            for (var y = 0; y < plan.Height; y++)
+            {
+                DownscaleHighPrecisionRow(
+                    samples, y * rowSamples, rowSamples, plan.Precision, bgrRow);
+                LumaConverter.BgrToGray(
+                    bgrRow,
+                    destination.Slice(y * plan.OutputStride, plan.Width),
+                    plan.Width);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(bgrRowBuffer);
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecisionRgbToGrayWithOrientation(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var rowSamples = checked(plan.Width * 3);
+        var sampleCount = checked(rowSamples * plan.Height);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(sampleCount * 2));
+        var bgrRowBuffer = ArrayPool<byte>.Shared.Rent(rowSamples);
+        var grayBuffer = ArrayPool<byte>.Shared.Rent(pixelCount);
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                sampleCount,
+                plan.Precision,
+                rowSamples,
+                TurboJpegNativeApi.PixelFormatBgr,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var bgrRow = bgrRowBuffer.AsSpan(0, rowSamples);
+            var gray = grayBuffer.AsSpan(0, pixelCount);
+
+            for (var y = 0; y < plan.Height; y++)
+            {
+                DownscaleHighPrecisionRow(
+                    samples, y * rowSamples, rowSamples, plan.Precision, bgrRow);
+                LumaConverter.BgrToGray(
+                    bgrRow, gray.Slice(y * plan.Width, plan.Width), plan.Width);
+            }
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                gray,
+                plan.Width,
+                plan.Height,
+                1,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(grayBuffer);
+            ArrayPool<byte>.Shared.Return(bgrRowBuffer);
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecisionGrayExpandToBmp(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(pixelCount * 2));
+        var grayBuffer = ArrayPool<byte>.Shared.Rent(pixelCount);
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                pixelCount,
+                plan.Precision,
+                plan.Width,
+                TurboJpegNativeApi.PixelFormatGray,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var gray = grayBuffer.AsSpan(0, pixelCount);
+            var destination = bmp[plan.PixelOffset..];
+            var rowByteCount = checked(plan.Width * plan.BytesPerPixel);
+
+            for (var y = 0; y < plan.Height; y++)
+            {
+                var grayRow = gray.Slice(y * plan.Width, plan.Width);
+                DownscaleHighPrecisionRow(
+                    samples, y * plan.Width, plan.Width, plan.Precision, grayRow);
+
+                var row = destination.Slice(y * plan.OutputStride, rowByteCount);
+                if (plan.BytesPerPixel == 3)
+                {
+                    GrayConverter.ExpandToBgr(grayRow, row, plan.Width);
+                }
+                else
+                {
+                    GrayConverter.ExpandToBgra(grayRow, row, plan.Width);
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(grayBuffer);
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecisionGrayExpandWithOrientation(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var expandedByteCount = checked(pixelCount * plan.BytesPerPixel);
+        var expandedWithPadding = checked(expandedByteCount + 4);
+        var samples = ArrayPool<byte>.Shared.Rent(checked(pixelCount * 2));
+        var grayBuffer = ArrayPool<byte>.Shared.Rent(pixelCount);
+        var expandedBuffer = ArrayPool<byte>.Shared.Rent(expandedWithPadding);
+
+        try
+        {
+            DecodeHighPrecision(
+                handle,
+                jpeg,
+                samples,
+                pixelCount,
+                plan.Precision,
+                plan.Width,
+                TurboJpegNativeApi.PixelFormatGray,
+                tolerateWarnings: !options.StopOnWarning);
+
+            var gray = grayBuffer.AsSpan(0, pixelCount);
+            for (var y = 0; y < plan.Height; y++)
+            {
+                DownscaleHighPrecisionRow(
+                    samples,
+                    y * plan.Width,
+                    plan.Width,
+                    plan.Precision,
+                    gray.Slice(y * plan.Width, plan.Width));
+            }
+
+            var expanded = expandedBuffer.AsSpan(0, expandedWithPadding);
+            if (plan.BytesPerPixel == 3)
+            {
+                GrayConverter.ExpandToBgr(gray, expanded, pixelCount);
+            }
+            else
+            {
+                GrayConverter.ExpandToBgra(gray, expanded, pixelCount);
+            }
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                expanded,
+                plan.Width,
+                plan.Height,
+                plan.BytesPerPixel,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(expandedBuffer);
+            ArrayPool<byte>.Shared.Return(grayBuffer);
+            ArrayPool<byte>.Shared.Return(samples);
+        }
+    }
+
+    private static void DecodeHighPrecision(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        byte[] scratch,
+        int sampleCount,
+        int precision,
+        int pitch,
+        int pixelFormat,
+        bool tolerateWarnings)
+    {
+        var samples = scratch.AsSpan(0, checked(sampleCount * 2));
+
+        if (!tolerateWarnings)
+        {
+            samples.Clear();
+        }
+
+        if (precision <= 12)
+        {
+            Decompress12Into(
+                handle,
+                jpeg,
+                MemoryMarshal.Cast<byte, short>(samples),
+                pitch,
+                pixelFormat,
+                tolerateWarnings);
+        }
+        else
+        {
+            Decompress16Into(
+                handle,
+                jpeg,
+                MemoryMarshal.Cast<byte, ushort>(samples),
+                pitch,
+                pixelFormat,
+                tolerateWarnings);
+        }
+    }
+
+    private static void DownscaleHighPrecisionRow(
+        byte[] scratch,
+        int sampleOffset,
+        int sampleCount,
+        int precision,
+        Span<byte> destination)
+    {
+        var samples = scratch.AsSpan(checked(sampleOffset * 2), checked(sampleCount * 2));
+
+        if (precision <= 12)
+        {
+            PrecisionScale.Downscale12(
+                MemoryMarshal.Cast<byte, short>(samples), destination, sampleCount, precision);
+        }
+        else
+        {
+            PrecisionScale.Downscale16(
+                MemoryMarshal.Cast<byte, ushort>(samples), destination, sampleCount, precision);
+        }
+    }
+
     private static unsafe void DecodeRgbToGrayWithOrientation(
         nint handle,
         ReadOnlySpan<byte> jpeg,
@@ -750,6 +1174,12 @@ public sealed class TurboJpegDecoder : IDisposable
         Scale8InPlace,
         RgbToGrayFrom8,
         GrayExpandFrom8,
+        Downscale12,
+        Downscale16,
+        RgbToGrayFrom12,
+        RgbToGrayFrom16,
+        GrayExpandFrom12,
+        GrayExpandFrom16,
     }
 
     private readonly struct DecodePlan
@@ -835,6 +1265,58 @@ public sealed class TurboJpegDecoder : IDisposable
         fixed (byte* dstBuf = destination)
         {
             if (TurboJpegNativeApi.Decompress8(
+                    handle,
+                    jpegBuf,
+                    (nuint)jpeg.Length,
+                    dstBuf,
+                    pitch,
+                    pixelFormat) != 0
+                && (!tolerateWarnings
+                    || TurboJpegNativeApi.GetErrorCode(handle) != TurboJpegNativeApi.ErrorWarning))
+            {
+                ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
+            }
+        }
+    }
+
+    private static unsafe void Decompress12Into(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        Span<short> destination,
+        int pitch,
+        int pixelFormat,
+        bool tolerateWarnings)
+    {
+        fixed (byte* jpegBuf = jpeg)
+        fixed (short* dstBuf = destination)
+        {
+            if (TurboJpegNativeApi.Decompress12(
+                    handle,
+                    jpegBuf,
+                    (nuint)jpeg.Length,
+                    dstBuf,
+                    pitch,
+                    pixelFormat) != 0
+                && (!tolerateWarnings
+                    || TurboJpegNativeApi.GetErrorCode(handle) != TurboJpegNativeApi.ErrorWarning))
+            {
+                ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
+            }
+        }
+    }
+
+    private static unsafe void Decompress16Into(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        Span<ushort> destination,
+        int pitch,
+        int pixelFormat,
+        bool tolerateWarnings)
+    {
+        fixed (byte* jpegBuf = jpeg)
+        fixed (ushort* dstBuf = destination)
+        {
+            if (TurboJpegNativeApi.Decompress16(
                     handle,
                     jpegBuf,
                     (nuint)jpeg.Length,

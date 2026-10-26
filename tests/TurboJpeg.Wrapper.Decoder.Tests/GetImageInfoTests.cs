@@ -33,13 +33,13 @@ public sealed class GetImageInfoTests
     }
 
     [Fact]
-    public void GetImageInfo_Precision12_IsReportedButNotDecodable()
+    public void GetImageInfo_Precision12_IsReportedAndDecodable()
     {
         using var decoder = new TurboJpegDecoder();
         var info = decoder.GetImageInfo(TestFixtures.Load("precision12.jpg"));
 
         Assert.Equal(12, info.Precision);
-        Assert.False(info.CanDecodeToBmp);
+        Assert.True(info.CanDecodeToBmp);
     }
 
     [Fact]
@@ -90,7 +90,9 @@ public sealed class GetImageInfoTests
     [InlineData(TurboJpegColorspace.Rgb, 8, true)]
     [InlineData(TurboJpegColorspace.Cmyk, 8, false)]
     [InlineData(TurboJpegColorspace.Ycck, 8, false)]
-    [InlineData(TurboJpegColorspace.YCbCr, 12, false)]
+    [InlineData(TurboJpegColorspace.YCbCr, 12, true)]
+    [InlineData(TurboJpegColorspace.YCbCr, 16, true)]
+    [InlineData(TurboJpegColorspace.Cmyk, 12, false)]
     public void CanDecodeToBmp_ReflectsSupportedFormats(
         TurboJpegColorspace colorspace, int precision, bool expected)
     {
