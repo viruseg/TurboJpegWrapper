@@ -645,6 +645,60 @@ public sealed class BmpPixelConverterTests
     }
 
     [Fact]
+    public void Convert_32BitSixteenBitRedMask_ScalesThroughLookupTable()
+    {
+        var samples = new uint[] { 0xFFFF1234, 0x0000FF00, 0x000000FF, 0x80008080 };
+        var bmp = BmpBuilder.Create32Bitfields(
+            4,
+            1,
+            (x, _) => samples[x],
+            redMask: 0xFFFF0000,
+            greenMask: 0x0000FF00,
+            blueMask: 0x000000FF);
+        var info = BmpReader.Read(bmp);
+
+        var pixels = BmpPixelConverter.Convert(bmp, in info, grayscaleOutput: false);
+        try
+        {
+            Assert.Equal(TurboJpegNativeApi.PixelFormatBgr, pixels.PixelFormat);
+            Assert.Equal(((byte)0x34, (byte)0x12, (byte)255), PixelBgr(pixels, info.Height, 0, 0));
+            Assert.Equal(((byte)0, (byte)255, (byte)0), PixelBgr(pixels, info.Height, 1, 0));
+            Assert.Equal(((byte)255, (byte)0, (byte)0), PixelBgr(pixels, info.Height, 2, 0));
+            Assert.Equal(((byte)0x80, (byte)0x80, (byte)128), PixelBgr(pixels, info.Height, 3, 0));
+        }
+        finally
+        {
+            pixels.Release();
+        }
+    }
+
+    [Fact]
+    public void Convert_32BitWideMask_FallsBackToExactDivision()
+    {
+        var samples = new uint[] { 0xFFFFF0F0, 0x0000FF00, 0x00001010 };
+        var bmp = BmpBuilder.Create32Bitfields(
+            3,
+            1,
+            (x, _) => samples[x],
+            redMask: 0xFFFFF000,
+            greenMask: 0x00000F00,
+            blueMask: 0x000000F0);
+        var info = BmpReader.Read(bmp);
+
+        var pixels = BmpPixelConverter.Convert(bmp, in info, grayscaleOutput: false);
+        try
+        {
+            Assert.Equal(((byte)255, (byte)0, (byte)255), PixelBgr(pixels, info.Height, 0, 0));
+            Assert.Equal(((byte)0, (byte)255, (byte)0), PixelBgr(pixels, info.Height, 1, 0));
+            Assert.Equal(((byte)17, (byte)0, (byte)0), PixelBgr(pixels, info.Height, 2, 0));
+        }
+        finally
+        {
+            pixels.Release();
+        }
+    }
+
+    [Fact]
     public void Release_DirectPath_CanBeCalledTwice()
     {
         var bmp = BmpBuilder.Create24(2, 2, (_, _) => ((byte)1, (byte)2, (byte)3));

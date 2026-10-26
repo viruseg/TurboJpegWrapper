@@ -312,18 +312,35 @@ internal static class BmpPixelConverter
         private readonly uint _mask;
         private readonly int _shift;
         private readonly uint _max;
+        private readonly byte[]? _lut;
 
         internal ChannelField(uint mask)
         {
             _mask = mask;
             _shift = BitOperations.TrailingZeroCount(mask);
             _max = mask >> _shift;
+            _lut = _max <= ushort.MaxValue ? CreateLut(_max) : null;
         }
 
         internal byte Extract(uint sample)
         {
             var value = (sample & _mask) >> _shift;
-            return (byte)(((ulong)value * 255 + (_max / 2)) / _max);
+            var lut = _lut;
+
+            return lut is null
+                ? (byte)(((ulong)value * 255 + (_max / 2)) / _max)
+                : lut[(int)value];
+        }
+
+        private static byte[] CreateLut(uint max)
+        {
+            var lut = new byte[(int)max + 1];
+            for (var value = 0; value <= (int)max; value++)
+            {
+                lut[value] = (byte)(((ulong)value * 255 + (max / 2)) / max);
+            }
+
+            return lut;
         }
     }
 }
