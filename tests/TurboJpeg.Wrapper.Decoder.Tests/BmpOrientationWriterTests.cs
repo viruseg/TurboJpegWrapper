@@ -39,6 +39,50 @@ public sealed class BmpOrientationWriterTests
         }
     }
 
+    public static IEnumerable<object[]> Blocked8Sizes()
+    {
+        yield return [1, 1];
+        yield return [2, 16];
+        yield return [3, 17];
+        yield return [4, 15];
+        yield return [4, 16];
+        yield return [5, 17];
+        yield return [15, 16];
+        yield return [16, 15];
+        yield return [16, 16];
+        yield return [17, 31];
+        yield return [31, 17];
+        yield return [35, 23];
+        yield return [64, 16];
+        yield return [65, 33];
+    }
+
+    [Theory]
+    [MemberData(nameof(Blocked8Sizes))]
+    public void Write8_MatchesReference_ForBlockedTransposes(int width, int height)
+    {
+        var source = new byte[width * height];
+        for (var i = 0; i < source.Length; i++)
+        {
+            source[i] = (byte)((i * 31) + 7);
+        }
+
+        var destinationStride = (height + 3) & ~3;
+        foreach (var orientationValue in new[] { 5, 6, 7, 8 })
+        {
+            var orientation = (ExifOrientation)orientationValue;
+            var expected = new byte[destinationStride * width];
+            WriteReference(
+                expected, source, width, height, 1, destinationStride, orientation);
+
+            var actual = new byte[expected.Length];
+            BmpOrientationWriter.Write(
+                actual, source, width, height, 1, destinationStride, orientation);
+
+            Assert.Equal(expected, actual);
+        }
+    }
+
     [Theory]
     [MemberData(nameof(PortableCases))]
     public void WritePortable_MatchesReference(
