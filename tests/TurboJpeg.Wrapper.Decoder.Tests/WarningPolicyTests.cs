@@ -31,6 +31,18 @@ public sealed class WarningPolicyTests
     }
 
     [Fact]
+    public void DecodeToBmp_InvalidBytes_Tolerant_ThrowsFatal()
+    {
+        using var decoder = new TurboJpegDecoder();
+        var tolerant = new TurboJpegDecodeOptions { StopOnWarning = false };
+
+        var ex = Assert.Throws<TurboJpegException>(() =>
+            decoder.DecodeToBmp(new byte[] { 1, 2, 3, 4 }, tolerant));
+
+        Assert.True(ex.IsFatal);
+    }
+
+    [Fact]
     public void GetImageInfo_HeaderWarning_StaysStrict()
     {
         Assert.Throws<TurboJpegException>(() =>
