@@ -17,6 +17,8 @@ public sealed class GetImageInfoTests
         Assert.Equal(TurboJpegColorspace.YCbCr, info.Colorspace);
         Assert.Equal(TurboJpegSubsampling.Yuv420, info.Subsampling);
         Assert.False(info.IsLossless);
+        Assert.False(info.IsProgressive);
+        Assert.False(info.UsesArithmeticCoding);
         Assert.True(info.CanDecodeToBmp);
     }
 

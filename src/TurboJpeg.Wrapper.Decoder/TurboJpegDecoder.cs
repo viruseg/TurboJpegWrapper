@@ -22,6 +22,7 @@ public sealed class TurboJpegDecoder : IDisposable
     private readonly TurboJpegDecodeOptions _defaultOptions;
     private readonly Func<SafeTurboJpegHandle> _handleFactory;
     private SafeTurboJpegHandle? _handle;
+    private int _appliedStopOnWarning = UnsetParameter;
     private int _appliedBottomUp = UnsetParameter;
     private int _appliedMaxPixels = UnsetParameter;
     private int _appliedMaxMemory = UnsetParameter;
@@ -65,8 +66,15 @@ public sealed class TurboJpegDecoder : IDisposable
             ThrowHelper.ThrowJpegEmpty();
         }
 
+        var handle = _handle!.DangerousGetHandle();
+        ApplyWarningPolicy(handle, stopOnWarning: true);
+
         return ReadHeader(
-            jpeg, includeDensity: true, includeSubsampling: true, includeLossless: true);
+            jpeg,
+            tolerateWarnings: false,
+            includeDensity: true,
+            includeSubsampling: true,
+            includeLossless: true);
     }
 
     /// <summary>Decodes a JPEG image to a complete BMP file using the decoder's default options.</summary>
@@ -203,11 +211,18 @@ public sealed class TurboJpegDecoder : IDisposable
             ThrowHelper.ThrowJpegEmpty();
         }
 
+        var handle = _handle!.DangerousGetHandle();
+        ApplyWarningPolicy(handle, options.StopOnWarning);
+
         var includeSubsampling = options.Crop is not null;
         var includeLossless =
             options.Crop is not null || options.ScalingFactor != TurboJpegScalingFactor.One;
         var info = ReadHeader(
-            jpeg, includeDensity, includeSubsampling, includeLossless);
+            jpeg,
+            tolerateWarnings: !options.StopOnWarning,
+            includeDensity,
+            includeSubsampling,
+            includeLossless);
         if (!info.CanDecodeToBmp)
         {
             ThrowHelper.ThrowCannotDecodeToBmp(info.Precision, info.Colorspace);
@@ -300,7 +315,18 @@ public sealed class TurboJpegDecoder : IDisposable
 
         if (!plan.SwapsAxes)
         {
-            DecompressInto(handle, jpeg, bmp[plan.PixelOffset..], plan.OutputStride, plan.PixelFormat);
+            if (!options.StopOnWarning)
+            {
+                bmp[plan.PixelOffset..].Clear();
+            }
+
+            Decompress8Into(
+                handle,
+                jpeg,
+                bmp[plan.PixelOffset..],
+                plan.OutputStride,
+                plan.PixelFormat,
+                tolerateWarnings: !options.StopOnWarning);
 
             if (plan.Orientation is ExifOrientation.FlipHorizontal or ExifOrientation.Rotate180)
             {
@@ -323,8 +349,18 @@ public sealed class TurboJpegDecoder : IDisposable
         try
         {
             var sourcePixels = scratch.AsSpan(0, sourceWithPadding);
-            DecompressInto(
-                handle, jpeg, sourcePixels[..sourceByteCount], sourcePitch, plan.PixelFormat);
+            if (!options.StopOnWarning)
+            {
+                sourcePixels.Clear();
+            }
+
+            Decompress8Into(
+                handle,
+                jpeg,
+                sourcePixels[..sourceByteCount],
+                sourcePitch,
+                plan.PixelFormat,
+                tolerateWarnings: !options.StopOnWarning);
 
             BmpOrientationWriter.Write(
                 bmp[plan.PixelOffset..],
@@ -359,6 +395,15 @@ public sealed class TurboJpegDecoder : IDisposable
             ref _appliedFastUpsample);
         ApplyScalingFactor(handle, options.ScalingFactor);
         ApplyCrop(handle, options.Crop);
+    }
+
+    private void ApplyWarningPolicy(nint handle, bool stopOnWarning)
+    {
+        ApplyParameter(
+            handle,
+            TurboJpegNativeApi.ParamStopOnWarning,
+            stopOnWarning ? 1 : 0,
+            ref _appliedStopOnWarning);
     }
 
     private readonly struct DecodePlan
@@ -424,12 +469,13 @@ public sealed class TurboJpegDecoder : IDisposable
         internal bool SwapsAxes { get; }
     }
 
-    private static unsafe void DecompressInto(
+    private static unsafe void Decompress8Into(
         nint handle,
         ReadOnlySpan<byte> jpeg,
         Span<byte> destination,
         int pitch,
-        int pixelFormat)
+        int pixelFormat,
+        bool tolerateWarnings)
     {
         fixed (byte* jpegBuf = jpeg)
         fixed (byte* dstBuf = destination)
@@ -440,7 +486,9 @@ public sealed class TurboJpegDecoder : IDisposable
                     (nuint)jpeg.Length,
                     dstBuf,
                     pitch,
-                    pixelFormat) != 0)
+                    pixelFormat) != 0
+                && (!tolerateWarnings
+                    || TurboJpegNativeApi.GetErrorCode(handle) != TurboJpegNativeApi.ErrorWarning))
             {
                 ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
             }
@@ -456,6 +504,7 @@ public sealed class TurboJpegDecoder : IDisposable
 
     private unsafe TurboJpegImageInfo ReadHeader(
         ReadOnlySpan<byte> jpeg,
+        bool tolerateWarnings,
         bool includeDensity,
         bool includeSubsampling,
         bool includeLossless)
@@ -472,7 +521,9 @@ public sealed class TurboJpegDecoder : IDisposable
         {
             fixed (byte* jpegBuf = jpeg)
             {
-                if (TurboJpegNativeApi.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0)
+                if (TurboJpegNativeApi.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0
+                    && (!tolerateWarnings
+                        || TurboJpegNativeApi.GetErrorCode(handle) != TurboJpegNativeApi.ErrorWarning))
                 {
                     ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
                 }
@@ -482,6 +533,8 @@ public sealed class TurboJpegDecoder : IDisposable
             var height = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamJpegHeight);
             var precision = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamPrecision);
             var colorspace = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamColorspace);
+            var progressive = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamProgressive);
+            var arithmetic = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamArithmetic);
             var subsampling = includeSubsampling
                 ? TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamSubsamp)
                 : (int)TurboJpegSubsampling.Unknown;
@@ -513,7 +566,9 @@ public sealed class TurboJpegDecoder : IDisposable
             {
                 DensityX = densityX,
                 DensityY = densityY,
-                DensityUnits = (TurboJpegDensityUnits)densityUnits
+                DensityUnits = (TurboJpegDensityUnits)densityUnits,
+                IsProgressive = progressive != 0,
+                UsesArithmeticCoding = arithmetic != 0
             };
         }
         catch (TurboJpegException)
@@ -536,6 +591,7 @@ public sealed class TurboJpegDecoder : IDisposable
     {
         _handle?.Dispose();
         _handle = null;
+        _appliedStopOnWarning = UnsetParameter;
         _appliedBottomUp = UnsetParameter;
         _appliedMaxPixels = UnsetParameter;
         _appliedMaxMemory = UnsetParameter;
