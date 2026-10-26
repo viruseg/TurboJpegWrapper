@@ -1051,16 +1051,12 @@ public sealed class TurboJpegDecoder : IDisposable
                 tolerateWarnings: !options.StopOnWarning);
 
             var destination = bmp[plan.PixelOffset..];
+            var opaqueAlpha = plan.BytesPerPixel == 4;
             for (var y = 0; y < plan.Height; y++)
             {
                 var row = destination.Slice(y * plan.OutputStride, rowSamples);
                 DownscaleHighPrecisionRow(
-                    samples, y * rowSamples, rowSamples, plan.Precision, row);
-
-                if (plan.BytesPerPixel == 4)
-                {
-                    PrecisionScale.ForceOpaqueAlpha(row, plan.Width);
-                }
+                    samples, y * rowSamples, rowSamples, plan.Precision, row, opaqueAlpha);
             }
         }
         finally
@@ -1095,6 +1091,7 @@ public sealed class TurboJpegDecoder : IDisposable
                 tolerateWarnings: !options.StopOnWarning);
 
             var outputPixels = output.AsSpan(0, outputWithPadding);
+            var opaqueAlpha = plan.BytesPerPixel == 4;
             for (var y = 0; y < plan.Height; y++)
             {
                 DownscaleHighPrecisionRow(
@@ -1102,13 +1099,8 @@ public sealed class TurboJpegDecoder : IDisposable
                     y * rowSamples,
                     rowSamples,
                     plan.Precision,
-                    outputPixels.Slice(y * rowSamples, rowSamples));
-            }
-
-            if (plan.BytesPerPixel == 4)
-            {
-                PrecisionScale.ForceOpaqueAlpha(
-                    outputPixels[..sampleCount], plan.Width * plan.Height);
+                    outputPixels.Slice(y * rowSamples, rowSamples),
+                    opaqueAlpha);
             }
 
             BmpOrientationWriter.Write(
@@ -1384,19 +1376,28 @@ public sealed class TurboJpegDecoder : IDisposable
         int sampleOffset,
         int sampleCount,
         int precision,
-        Span<byte> destination)
+        Span<byte> destination,
+        bool opaqueAlpha = false)
     {
         var samples = scratch.AsSpan(checked(sampleOffset * 2), checked(sampleCount * 2));
 
         if (precision <= 12)
         {
             PrecisionScale.Downscale12(
-                MemoryMarshal.Cast<byte, short>(samples), destination, sampleCount, precision);
+                MemoryMarshal.Cast<byte, short>(samples),
+                destination,
+                sampleCount,
+                precision,
+                opaqueAlpha);
         }
         else
         {
             PrecisionScale.Downscale16(
-                MemoryMarshal.Cast<byte, ushort>(samples), destination, sampleCount, precision);
+                MemoryMarshal.Cast<byte, ushort>(samples),
+                destination,
+                sampleCount,
+                precision,
+                opaqueAlpha);
         }
     }
 
