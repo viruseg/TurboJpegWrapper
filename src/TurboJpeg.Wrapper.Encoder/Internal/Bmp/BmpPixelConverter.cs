@@ -20,7 +20,9 @@ internal static class BmpPixelConverter
     /// <param name="info">The layout returned by <see cref="BmpReader.Read"/>.</param>
     /// <param name="grayscaleOutput">
     /// Whether the encoder was asked for grayscale output. This lets an identity grayscale
-    /// palette stay zero-copy and makes palette conversions emit one byte per pixel.
+    /// palette stay zero-copy and makes grayscale palette conversions emit one byte per
+    /// pixel. Colour palettes always expand to BGR because only native TurboJPEG turns
+    /// BGR into gray.
     /// </param>
     /// <returns>The pixel view; the caller must call <see cref="BmpPixels.Release"/>.</returns>
     internal static BmpPixels Convert(
@@ -95,10 +97,29 @@ internal static class BmpPixelConverter
         return true;
     }
 
+    private static bool HasGrayscalePalette(ReadOnlySpan<byte> bmp, in BmpInfo info)
+    {
+        // Only a neutral palette (all three channels equal per entry) carries luma
+        // directly. A colour palette's red channel is not luma, and lossless mode ignores
+        // the requested colorspace, so colour palettes must stay BGR and let TurboJPEG
+        // perform the colour-to-gray conversion.
+        var count = Math.Min(info.PaletteCount, PaletteEntries);
+        for (var i = 0; i < count; i++)
+        {
+            var entry = info.PaletteOffset + i * PaletteEntrySize;
+            if (bmp[entry] != bmp[entry + 1] || bmp[entry + 1] != bmp[entry + 2])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private static BmpPixels ConvertPixels(
         ReadOnlySpan<byte> bmp, in BmpInfo info, bool grayscaleOutput)
     {
-        var gray = grayscaleOutput && info.BitCount <= 8;
+        var gray = grayscaleOutput && info.BitCount <= 8 && HasGrayscalePalette(bmp, info);
         var bytesPerPixel = gray ? 1 : 3;
 
         var pitch = (long)info.Width * bytesPerPixel;
@@ -147,7 +168,7 @@ internal static class BmpPixelConverter
             var entry = paletteOffset + i * PaletteEntrySize;
             if (gray)
             {
-                // Grayscale palette entries carry the same value in all channels.
+                // Only neutral palettes reach this path, so all channels carry this value.
                 lut[i] = bmp[entry + 2];
             }
             else

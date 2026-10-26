@@ -256,6 +256,49 @@ public sealed class BmpPixelConverterTests
     }
 
     [Fact]
+    public void Convert_8BitColourPalette_GrayscaleRequested_KeepsExactBgr()
+    {
+        var palette = new (byte B, byte G, byte R)[]
+        {
+            (10, 20, 30),
+            (40, 50, 60),
+            (70, 80, 90),
+            (100, 110, 120),
+        };
+        var bmp = BmpBuilder.CreatePalette8(
+            3,
+            2,
+            (x, y) => (byte)((x + y * 3) % 4),
+            palette,
+            clrUsed: 4);
+        var info = BmpReader.Read(bmp);
+
+        var pixels = BmpPixelConverter.Convert(bmp, in info, grayscaleOutput: true);
+        try
+        {
+            Assert.Equal(TurboJpegNativeApi.PixelFormatBgr, pixels.PixelFormat);
+            Assert.True(pixels.BottomUp);
+            Assert.Equal(9, pixels.Pitch);
+            Assert.Equal(18, pixels.Data.Length);
+
+            // A colour palette carries no luma, so the requested gray output stays BGR.
+            // Rows are stored bottom-up: image row 1 (indices 3, 0, 1), then row 0 (0, 1, 2).
+            var expected = new byte[]
+            {
+                100, 110, 120, 10, 20, 30, 40, 50, 60,
+                10, 20, 30, 40, 50, 60, 70, 80, 90,
+            };
+            Assert.True(pixels.Data.SequenceEqual(expected));
+            Assert.Equal(((byte)10, (byte)20, (byte)30), PixelBgr(pixels, info.Height, 0, 0));
+            Assert.Equal(((byte)100, (byte)110, (byte)120), PixelBgr(pixels, info.Height, 0, 1));
+        }
+        finally
+        {
+            pixels.Release();
+        }
+    }
+
+    [Fact]
     public void Convert_8BitPaletteIndicesBeyondClrUsed_BecomeBlack()
     {
         var palette = new (byte B, byte G, byte R)[]
