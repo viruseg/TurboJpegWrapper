@@ -29,6 +29,28 @@ public sealed record TurboJpegDecodeOptions
         }
     }
 
+    /// <summary>Gets the region to decode; <see langword="null"/> decodes the full scaled image.</summary>
+    /// <remarks>
+    /// Coordinates refer to the scaled, stored image: <see cref="ScalingFactor"/> is applied first,
+    /// and <see cref="AutoOrient"/> then transforms the cropped pixels. The region must fit inside
+    /// the scaled image, and <see cref="TurboJpegCrop.X"/> must be divisible by the scaled iMCU
+    /// width; <see cref="TurboJpegCrop.Y"/> is not required to be iMCU-aligned. Cropping is
+    /// supported only for lossy JPEGs with a known subsampling level.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// The region does not fit inside the scaled image, is not iMCU-aligned horizontally, or the
+    /// image is lossless or has unknown subsampling.
+    /// </exception>
+    public TurboJpegCrop? Crop { get; init; }
+
+    /// <summary>Gets a value indicating whether a native warning is treated as an error.</summary>
+    /// <remarks>
+    /// The default is <see langword="true"/>: a native warning is reported as a non-fatal
+    /// <see cref="TurboJpegException"/>. When <see langword="false"/>, native warnings are ignored
+    /// and a best-effort BMP is returned; the output may be corrupt.
+    /// </remarks>
+    public bool StopOnWarning { get; init; } = true;
+
     /// <summary>Gets a value indicating whether the fastest DCT/IDCT algorithm is used.</summary>
     public bool FastDct { get; init; } = false;
 

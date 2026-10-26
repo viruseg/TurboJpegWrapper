@@ -30,4 +30,10 @@ public readonly record struct TurboJpegImageInfo(
 
     /// <summary>Gets the units of <see cref="DensityX"/> and <see cref="DensityY"/>.</summary>
     public TurboJpegDensityUnits DensityUnits { get; init; }
+
+    /// <summary>Gets a value indicating whether the image was encoded with progressive JPEG.</summary>
+    public bool IsProgressive { get; init; }
+
+    /// <summary>Gets a value indicating whether the image uses arithmetic entropy coding.</summary>
+    public bool UsesArithmeticCoding { get; init; }
 }

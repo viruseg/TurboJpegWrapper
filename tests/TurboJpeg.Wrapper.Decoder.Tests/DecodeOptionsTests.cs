@@ -230,4 +230,12 @@ public sealed class DecodeOptionsTests
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new TurboJpegDecodeOptions { BmpBitDepth = (TurboJpegBmpBitDepth)12 });
     }
+
+    [Fact]
+    public void Options_CropDefaultsToNull_StopOnWarningDefaultsToTrue()
+    {
+        var options = new TurboJpegDecodeOptions();
+        Assert.Null(options.Crop);
+        Assert.True(options.StopOnWarning);
+    }
 }
