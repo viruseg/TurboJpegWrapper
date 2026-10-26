@@ -76,7 +76,7 @@ File.WriteAllBytes("photo.jpg", buffer[..written]);
 
 `GetMaxJpegSize` parses and validates the BMP and returns the worst-case JPEG size that TurboJPEG can produce for the image and effective subsampling. It uses the same validation as encoding and is the correct way to size a destination buffer; the actual JPEG is usually smaller.
 
-The span overload requires `destination.Length` to be at least `GetMaxJpegSize` and throws `ArgumentException` otherwise. It writes the JPEG directly into the caller's buffer and returns the number of bytes written. The required destination length is the worst-case maximum, not the final encoded length.
+The span overload requires `destination.Length` to be at least `GetMaxJpegSize` and throws `ArgumentException` otherwise. It writes the JPEG directly into the caller's buffer and returns the number of bytes written. The required destination length is the worst-case maximum, not the final encoded length. The destination must not overlap the BMP source; the zero-copy pixel path may read the source while the native encoder writes JPEG bytes, so an overlapping destination is rejected with `ArgumentException`.
 
 ### Instance encoder
 
@@ -111,26 +111,26 @@ If a native encode fails, the instance recreates its native handle so it remains
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `Quality` | `90` | JPEG quality from 1 (lowest) to 100 (highest). Ignored when `Lossless` is `true`. |
-| `Subsampling` | `Yuv420` | Chroma subsampling: `Yuv444`, `Yuv422`, `Yuv420`, `Grayscale`, `Yuv440`, `Yuv411`, `Yuv441`, `Yuv410`, or `Yuv24`. `Unknown` is invalid. Ignored when `Lossless` is `true`. |
-| `Colorspace` | `Default` | `Default` resolves to `YCbCr` for colour input; `Rgb`, `YCbCr`, and `Grayscale` can be requested explicitly. `Grayscale`, or `Subsampling = Grayscale`, produces grayscale output. Ignored when `Lossless` is `true`. |
+| `Subsampling` | `Yuv420` | Chroma subsampling: `Yuv444`, `Yuv422`, `Yuv420`, `Grayscale`, `Yuv440`, `Yuv411`, `Yuv441`, `Yuv410`, or `Yuv24`. `Unknown` is invalid. Ignored when `Lossless` is `true` or `Colorspace` is `Rgb`; RGB output always uses 4:4:4. An explicit RGB colorspace takes precedence over `Subsampling = Grayscale`. |
+| `Colorspace` | `Default` | `Default` resolves to `YCbCr` for colour input; `Rgb`, `YCbCr`, and `Grayscale` can be requested explicitly. `Rgb` output always uses 4:4:4 regardless of `Subsampling`. `Grayscale`, or `Subsampling = Grayscale`, produces grayscale output. Ignored when `Lossless` is `true`. |
 | `FastDct` | `false` | Uses the fastest DCT/IDCT algorithm. Ignored when `Lossless` is `true`. |
 | `OptimizeCoding` | `false` | Generates optimal Huffman coding tables. Ignored when `Lossless` is `true`. |
 | `Progressive` | `false` | Produces a progressive JPEG. Ignored when `Lossless` is `true`. |
 | `ArithmeticCoding` | `false` | Uses arithmetic entropy coding. Ignored when `Lossless` is `true`. |
-| `Lossless` | `false` | Enables lossless JPEG compression. Only `LosslessPredictor`, `LosslessPointTransform`, `RestartRows`, `Density`, `MaxMemoryMegabytes`, and `StopOnWarning` apply; the lossy options are ignored. A non-zero `RestartBlocks` is rejected. |
+| `Lossless` | `false` | Enables lossless JPEG compression. Only `LosslessPredictor`, `LosslessPointTransform`, `RestartRows`, `MaxMemoryMegabytes`, and `StopOnWarning` apply; the lossy options are ignored. A non-zero `RestartBlocks` is rejected, and `Density` must be `null`. |
 | `LosslessPredictor` | `1` | Lossless predictor selector from 1 through 7. Applies only when `Lossless` is `true`. |
 | `LosslessPointTransform` | `0` | Lossless point transform from 0 through 7. Applies only when `Lossless` is `true`. A value greater than zero right-shifts the samples, so the encoded image is no longer bit-exact. |
-| `RestartBlocks` | `0` | Number of MCUs between restart markers; `0` disables restart markers. Applies only to lossy compression. Must be `0` with `Lossless`, and cannot be combined with a non-zero `RestartRows`. |
-| `RestartRows` | `0` | Number of MCU rows between restart markers; `0` disables restart markers. Applies to lossy and lossless compression and cannot be combined with a non-zero `RestartBlocks`. |
+| `RestartBlocks` | `0` | Number of MCUs between restart markers, from 0 through 65535; `0` disables restart markers. Applies only to lossy compression. Must be `0` with `Lossless`, and cannot be combined with a non-zero `RestartRows`. |
+| `RestartRows` | `0` | Number of MCU rows between restart markers, from 0 through 65535; `0` disables restart markers. Applies to lossy and lossless compression and cannot be combined with a non-zero `RestartBlocks`. |
 | `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations surface as `TurboJpegException`. |
 | `StopOnWarning` | `false` | Treats a TurboJPEG warning as an encoding failure instead of continuing. |
-| `Density` | `null` | Pixel density written to the JPEG header. `null` derives the density from the BMP as described below. Applies to lossy and lossless output. |
+| `Density` | `null` | Pixel density written to the JPEG header. `null` derives the density from the BMP as described below. Applies only to lossy YCbCr and grayscale output; explicit density is rejected with lossless or RGB output. |
 
 Range and enum validation runs when a value is assigned, including values that `Lossless` later ignores. For example, `Quality = 0` throws even when `Lossless = true`.
 
-Cross-property validation runs when encoding or sizing starts: `RestartBlocks` and `RestartRows` cannot both be non-zero, and `RestartBlocks` must be zero with `Lossless = true`. Both violations throw `ArgumentException` with parameter name `options`.
+Cross-property validation runs when encoding or sizing starts: `RestartBlocks` and `RestartRows` cannot both be non-zero, `RestartBlocks` must be zero with `Lossless = true`, and `Density` cannot be specified with `Lossless = true` or `Colorspace = Rgb`. All violations throw `ArgumentException` with parameter name `options`.
 
-Some combinations that depend on libjpeg-turbo semantics, such as requesting RGB output with chroma subsampling, are rejected by the native library and surface as `TurboJpegException`.
+RGB output is never subsampled: `Colorspace = Rgb` forces 4:4:4 and ignores `Subsampling`. Combinations that depend on other libjpeg-turbo semantics are rejected by the native library and surface as `TurboJpegException`.
 
 ## BMP input support
 
@@ -141,7 +141,7 @@ The encoder accepts complete BMP files with DIB header sizes 40, 52, 56, 108, or
 | 24-bit `BI_RGB` | Passed to TurboJPEG as BGR | Zero-copy |
 | 32-bit `BI_RGB` | Passed to TurboJPEG as BGRX; the fourth byte is ignored | Zero-copy |
 | 32-bit `BI_BITFIELDS` with masks `00FF0000`/`0000FF00`/`000000FF` | Passed to TurboJPEG as BGRX; alpha is ignored | Zero-copy |
-| 8-bit `BI_RGB` with an identity grayscale palette and grayscale output requested | Palette indices used directly as gray samples | Zero-copy |
+| 8-bit `BI_RGB` with a full 256-entry identity grayscale palette and grayscale output requested | Palette indices used directly as gray samples | Zero-copy |
 | 8-bit grayscale palette with grayscale output requested | Palette lookup to 8-bit gray | Pooled conversion |
 | 8-bit colour palette, or grayscale output not requested | Palette lookup to BGR | Pooled conversion |
 | 1- or 4-bit grayscale palette with grayscale output requested | Expand to 8-bit gray | Pooled conversion |
@@ -162,15 +162,17 @@ The following BMP variants are rejected:
 
 ## Density
 
-`Density` is a `TurboJpegDensity` value with positive `X` and `Y` dimensions and `PixelsPerInch`, `PixelsPerCentimeter`, or `Unknown` units. The `default` struct (0 x 0) is not a valid density.
+`Density` is a `TurboJpegDensity` value with `X` and `Y` between 1 and 65535 (the unsigned 16-bit range of the JPEG density fields) and `PixelsPerInch`, `PixelsPerCentimeter`, or `Unknown` units. The `default` struct (0 x 0) is not a valid density.
 
-When `Density` is `null`, the encoder derives the density from the BMP's `biXPelsPerMeter` and `biYPelsPerMeter` values:
+JPEG density is stored only in lossy YCbCr and grayscale files. Lossless JPEG output is RGB, and `Colorspace = Rgb` produces RGB output; neither can store a density. In those modes an explicit `Density` is rejected when encoding or sizing starts with `ArgumentException` (parameter name `options`), and BMP density is ignored: the encoder applies 1 x 1 with `Unknown` units.
 
-- A non-zero BMP density is converted to pixels per inch with `dpi = max(1, round(ppm * 0.0254))` and written with `PixelsPerInch` units.
+When `Density` is `null` and the output is lossy YCbCr or grayscale, the encoder derives the density from the BMP's `biXPelsPerMeter` and `biYPelsPerMeter` values:
+
+- A non-zero BMP density is converted to pixels per inch with `dpi = clamp(round(ppm * 0.0254), 1, 65535)` and written with `PixelsPerInch` units.
 - If only one BMP axis is non-zero, the same value is used for both axes.
-- If the BMP stores no density, the encoder applies the native default explicitly: 1 x 1 with `Unknown` units. This is not a 72 DPI value.
+- If the BMP stores no density, the encoder applies 1 x 1 with `Unknown` units explicitly. This is not a 72 DPI value.
 
-An explicit density overrides the BMP values and is applied verbatim:
+In lossy YCbCr and grayscale modes, an explicit density overrides the BMP values and is applied verbatim:
 
 ```csharp
 var options = new TurboJpegEncodeOptions
@@ -179,7 +181,7 @@ var options = new TurboJpegEncodeOptions
 };
 ```
 
-Density is applied to lossy and lossless output.
+Lossless and RGB outputs ignore the BMP density, so the same BMP can encode with an explicit 96 DPI density in YCbCr mode and with 1 x 1 `Unknown` density after switching to lossless or RGB.
 
 ## Performance and allocations
 
@@ -192,7 +194,7 @@ Density is applied to lossy and lossless output.
 
 ## Errors
 
-- `ArgumentException`: empty input, a malformed or truncated BMP, invalid option combinations (both restart options non-zero, or a non-zero `RestartBlocks` with lossless encoding), or a destination buffer that is too small.
+- `ArgumentException`: empty input, a malformed or truncated BMP, invalid option combinations (both restart options non-zero, a non-zero `RestartBlocks` with lossless encoding, or an explicit `Density` with lossless or RGB output), a destination buffer that is too small, or a destination buffer that overlaps the BMP source.
 - `ArgumentNullException`: a null options object passed to an options overload.
 - `ArgumentOutOfRangeException`: an option or density value is outside its allowed range or is not a defined enum value.
 - `TurboJpegUnsupportedException`: a valid BMP uses an encoding this library does not support.

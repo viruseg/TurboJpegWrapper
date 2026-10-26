@@ -57,10 +57,10 @@ Both packages expose a `TurboJpeg` facade and `TurboJpegException` types in thei
 - [TurboJpeg.Wrapper.Decoder README](src/TurboJpeg.Wrapper.Decoder/README.md)
 - [TurboJpeg.Wrapper.Encoder README](src/TurboJpeg.Wrapper.Encoder/README.md)
 
-Each NuGet package embeds the README for its own package.
+Each managed package embeds its own README. Native packages contain the native asset, `LICENSE`, and `THIRD-PARTY-NOTICES.md` only.
 
 ## License and third-party notices
 
 The source code in this repository is licensed under the MIT License. See [LICENSE](LICENSE).
 
-The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md). Every managed and native package includes `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md). Every managed package includes its README, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; native packages include `LICENSE` and `THIRD-PARTY-NOTICES.md`.
