@@ -29,6 +29,7 @@ public sealed class TurboJpegDecoder : IDisposable
     private int _appliedFastDct = UnsetParameter;
     private int _appliedFastUpsample = UnsetParameter;
     private TurboJpegScalingFactor? _appliedScalingFactor;
+    private TurboJpegCrop? _appliedCrop;
 
     /// <summary>Initializes a new instance of the <see cref="TurboJpegDecoder"/> class.</summary>
     /// <param name="defaultOptions">Options used when a method does not receive explicit options.</param>
@@ -202,9 +203,11 @@ public sealed class TurboJpegDecoder : IDisposable
             ThrowHelper.ThrowJpegEmpty();
         }
 
-        var includeLossless = options.ScalingFactor != TurboJpegScalingFactor.One;
+        var includeSubsampling = options.Crop is not null;
+        var includeLossless =
+            options.Crop is not null || options.ScalingFactor != TurboJpegScalingFactor.One;
         var info = ReadHeader(
-            jpeg, includeDensity, includeSubsampling: false, includeLossless);
+            jpeg, includeDensity, includeSubsampling, includeLossless);
         if (!info.CanDecodeToBmp)
         {
             ThrowHelper.ThrowCannotDecodeToBmp(info.Precision, info.Colorspace);
@@ -214,8 +217,12 @@ public sealed class TurboJpegDecoder : IDisposable
 
         var factor = options.ScalingFactor;
         var bitDepth = options.BmpBitDepth;
-        var width = ScaleDimension(info.Width, factor);
-        var height = ScaleDimension(info.Height, factor);
+        var scaledWidth = ScaleDimension(info.Width, factor);
+        var scaledHeight = ScaleDimension(info.Height, factor);
+        ValidateCrop(info, options, scaledWidth, scaledHeight);
+
+        var width = options.Crop?.Width ?? scaledWidth;
+        var height = options.Crop?.Height ?? scaledHeight;
 
         var orientation = options.AutoOrient
             ? ExifOrientationReader.Read(jpeg)
@@ -351,6 +358,7 @@ public sealed class TurboJpegDecoder : IDisposable
             options.FastUpsampling ? 1 : 0,
             ref _appliedFastUpsample);
         ApplyScalingFactor(handle, options.ScalingFactor);
+        ApplyCrop(handle, options.Crop);
     }
 
     private readonly struct DecodePlan
@@ -535,6 +543,7 @@ public sealed class TurboJpegDecoder : IDisposable
         _appliedFastDct = UnsetParameter;
         _appliedFastUpsample = UnsetParameter;
         _appliedScalingFactor = null;
+        _appliedCrop = null;
         _handle = _handleFactory();
     }
 
@@ -566,6 +575,63 @@ public sealed class TurboJpegDecoder : IDisposable
                 factor.Numerator, factor.Denominator);
         }
     }
+
+    private static void ValidateCrop(
+        TurboJpegImageInfo info,
+        TurboJpegDecodeOptions options,
+        int scaledWidth,
+        int scaledHeight)
+    {
+        if (options.Crop is not { } crop)
+        {
+            return;
+        }
+
+        if (crop.Width <= 0 || crop.Height <= 0)
+        {
+            ThrowHelper.ThrowCropSizeNotPositive(crop.Width, crop.Height);
+        }
+
+        if (info.IsLossless)
+        {
+            ThrowHelper.ThrowCropUnsupportedForLossless();
+        }
+
+        if (info.Subsampling == TurboJpegSubsampling.Unknown)
+        {
+            ThrowHelper.ThrowCropUnsupportedForUnknownSubsampling();
+        }
+
+        if ((long)crop.X + crop.Width > scaledWidth
+            || (long)crop.Y + crop.Height > scaledHeight)
+        {
+            ThrowHelper.ThrowCropOutsideImage(
+                crop.X, crop.Y, crop.Width, crop.Height, scaledWidth, scaledHeight);
+        }
+
+        var factor = options.ScalingFactor;
+        var scaledImcuWidth =
+            (GetImcuWidth(info.Subsampling) * factor.Numerator + factor.Denominator - 1)
+            / factor.Denominator;
+        if (crop.X % scaledImcuWidth != 0)
+        {
+            ThrowHelper.ThrowCropMisaligned(crop.X, scaledImcuWidth);
+        }
+    }
+
+    private static int GetImcuWidth(TurboJpegSubsampling subsampling) => subsampling switch
+    {
+        TurboJpegSubsampling.Yuv444 => 8,
+        TurboJpegSubsampling.Yuv422 => 16,
+        TurboJpegSubsampling.Yuv420 => 16,
+        TurboJpegSubsampling.Grayscale => 8,
+        TurboJpegSubsampling.Yuv440 => 8,
+        TurboJpegSubsampling.Yuv411 => 32,
+        TurboJpegSubsampling.Yuv441 => 8,
+        TurboJpegSubsampling.Yuv410 => 32,
+        TurboJpegSubsampling.Yuv24 => 16,
+        _ => 0,
+    };
 
     private static int ScaleDimension(int dimension, TurboJpegScalingFactor factor)
     {
@@ -609,6 +675,31 @@ public sealed class TurboJpegDecoder : IDisposable
         }
 
         _appliedScalingFactor = factor;
+    }
+
+    private void ApplyCrop(nint handle, TurboJpegCrop? crop)
+    {
+        if (_appliedCrop == crop)
+        {
+            return;
+        }
+
+        var region = crop is { } value
+            ? new TjRegion
+            {
+                X = value.X,
+                Y = value.Y,
+                W = value.Width,
+                H = value.Height,
+            }
+            : new TjRegion();
+
+        if (TurboJpegNativeApi.SetCroppingRegion(handle, region) != 0)
+        {
+            ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
+        }
+
+        _appliedCrop = crop;
     }
 
     private static void SetParameter(nint handle, int parameter, int value)

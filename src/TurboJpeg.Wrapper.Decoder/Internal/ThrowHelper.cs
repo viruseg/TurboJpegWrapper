@@ -83,6 +83,44 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowCropSizeNotPositive(int width, int height) =>
+        throw new ArgumentException(
+            $"The crop region must have positive dimensions; got {width}x{height}.",
+            "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowCropUnsupportedForLossless() =>
+        throw new ArgumentException(
+            "Cropping is not supported for lossless JPEG images.",
+            "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowCropUnsupportedForUnknownSubsampling() =>
+        throw new ArgumentException(
+            "Cropping requires a JPEG with a known chroma subsampling scheme.",
+            "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowCropOutsideImage(
+        int x, int y, int width, int height, int imageWidth, int imageHeight) =>
+        throw new ArgumentException(
+            $"The crop region ({x},{y},{width}x{height}) does not fit inside " +
+            $"the {imageWidth}x{imageHeight} scaled image.",
+            "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowCropMisaligned(int x, int scaledImcuWidth) =>
+        throw new ArgumentException(
+            $"The crop X offset {x} must be divisible by the scaled iMCU width " +
+            $"{scaledImcuWidth}.",
+            "options");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ThrowScaledDimensionTooLarge(long scaledDimension) =>
         throw new TurboJpegImageTooLargeException(
             $"The scaled image dimension {scaledDimension} exceeds the maximum supported dimension of {int.MaxValue}.");

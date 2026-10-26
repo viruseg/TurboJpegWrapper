@@ -9,6 +9,15 @@ internal struct TjScalingFactor
     internal int Denominator;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct TjRegion
+{
+    internal int X;
+    internal int Y;
+    internal int W;
+    internal int H;
+}
+
 internal static unsafe partial class TurboJpegNativeApi
 {
     internal const string LibraryName = "turbojpeg";
@@ -87,6 +96,9 @@ internal static unsafe partial class TurboJpegNativeApi
 
     [LibraryImport(LibraryName, EntryPoint = "tj3SetScalingFactor")]
     internal static partial int SetScalingFactor(nint handle, TjScalingFactor factor);
+
+    [LibraryImport(LibraryName, EntryPoint = "tj3SetCroppingRegion")]
+    internal static partial int SetCroppingRegion(nint handle, TjRegion region);
 
     [LibraryImport(LibraryName, EntryPoint = "tj3Compress8")]
     internal static partial int Compress8(
