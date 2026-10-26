@@ -48,8 +48,8 @@ public sealed class PrecisionTests
         var bmp = Decode(fixture, TurboJpegBmpBitDepth.Bpp8);
 
         Assert.Equal(8, BmpTestHelpers.BitsPerPixel(bmp));
-        Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(bmp, 5, 10));
-        Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(bmp, 5, 13));
+        Assert.Equal((0, 0, 0, 255), BmpTestHelpers.Pixel(bmp, 5, 1));
+        Assert.Equal((255, 255, 255, 255), BmpTestHelpers.Pixel(bmp, 5, 21));
     }
 
     [Theory]

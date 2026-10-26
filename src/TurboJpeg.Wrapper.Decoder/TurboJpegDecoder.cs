@@ -217,7 +217,9 @@ public sealed class TurboJpegDecoder : IDisposable
 
         var includeSubsampling = options.Crop is not null;
         var includeLossless =
-            options.BmpBitDepth == TurboJpegBmpBitDepth.Bpp8
+            options.BmpBitDepth is TurboJpegBmpBitDepth.Bpp8
+                or TurboJpegBmpBitDepth.Bpp24
+                or TurboJpegBmpBitDepth.Bpp32
             || options.Crop is not null
             || options.ScalingFactor != TurboJpegScalingFactor.One;
         var info = ReadHeader(
@@ -284,7 +286,14 @@ public sealed class TurboJpegDecoder : IDisposable
         }
 
         var pipeline = DecodePipeline.Direct8;
-        if (bitDepth == TurboJpegBmpBitDepth.Bpp8
+        if (info.IsLossless
+            && info.Colorspace == TurboJpegColorspace.Grayscale
+            && bitDepth is TurboJpegBmpBitDepth.Bpp24 or TurboJpegBmpBitDepth.Bpp32)
+        {
+            pixelFormat = TurboJpegNativeApi.PixelFormatGray;
+            pipeline = DecodePipeline.GrayExpandFrom8;
+        }
+        else if (bitDepth == TurboJpegBmpBitDepth.Bpp8
             && info.IsLossless
             && info.Colorspace == TurboJpegColorspace.Rgb)
         {
@@ -346,6 +355,10 @@ public sealed class TurboJpegDecoder : IDisposable
             {
                 DecodeRgbToGrayToBmp(handle, jpeg, options, in plan, bmp, lut);
             }
+            else if (plan.Pipeline == DecodePipeline.GrayExpandFrom8)
+            {
+                DecodeGrayExpandToBmp(handle, jpeg, options, in plan, bmp, lut);
+            }
             else
             {
                 if (!options.StopOnWarning)
@@ -389,6 +402,12 @@ public sealed class TurboJpegDecoder : IDisposable
         if (plan.Pipeline == DecodePipeline.RgbToGrayFrom8)
         {
             DecodeRgbToGrayWithOrientation(handle, jpeg, options, in plan, bmp, lut);
+            return;
+        }
+
+        if (plan.Pipeline == DecodePipeline.GrayExpandFrom8)
+        {
+            DecodeGrayExpandWithOrientation(handle, jpeg, options, in plan, bmp, lut);
             return;
         }
 
@@ -513,6 +532,66 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
+    private static unsafe void DecodeGrayExpandToBmp(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp,
+        byte[]? lut)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var scratch = ArrayPool<byte>.Shared.Rent(pixelCount);
+
+        try
+        {
+            var gray = scratch.AsSpan(0, pixelCount);
+            if (!options.StopOnWarning)
+            {
+                gray.Clear();
+            }
+
+            Decompress8Into(
+                handle,
+                jpeg,
+                gray,
+                plan.Width,
+                TurboJpegNativeApi.PixelFormatGray,
+                tolerateWarnings: !options.StopOnWarning);
+
+            if (lut is not null)
+            {
+                PrecisionScale.ScaleLowPrecisionInPlace(
+                    gray,
+                    pixelCount,
+                    channels: 1,
+                    alphaLast: false,
+                    lut);
+            }
+
+            var destination = bmp[plan.PixelOffset..];
+            var rowByteCount = plan.Width * plan.BytesPerPixel;
+            for (var y = 0; y < plan.Height; y++)
+            {
+                var source = gray.Slice(y * plan.Width, plan.Width);
+                var row = destination.Slice(y * plan.OutputStride, rowByteCount);
+
+                if (plan.BytesPerPixel == 3)
+                {
+                    GrayConverter.ExpandToBgr(source, row, plan.Width);
+                }
+                else
+                {
+                    GrayConverter.ExpandToBgra(source, row, plan.Width);
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(scratch);
+        }
+    }
+
     private static unsafe void DecodeRgbToGrayWithOrientation(
         nint handle,
         ReadOnlySpan<byte> jpeg,
@@ -571,6 +650,71 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
+    private static unsafe void DecodeGrayExpandWithOrientation(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp,
+        byte[]? lut)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var expandedByteCount = checked(pixelCount * plan.BytesPerPixel);
+        var grayScratch = ArrayPool<byte>.Shared.Rent(pixelCount);
+        var expandedScratch = ArrayPool<byte>.Shared.Rent(checked(expandedByteCount + 4));
+
+        try
+        {
+            var gray = grayScratch.AsSpan(0, pixelCount);
+            if (!options.StopOnWarning)
+            {
+                gray.Clear();
+            }
+
+            Decompress8Into(
+                handle,
+                jpeg,
+                gray,
+                plan.Width,
+                TurboJpegNativeApi.PixelFormatGray,
+                tolerateWarnings: !options.StopOnWarning);
+
+            if (lut is not null)
+            {
+                PrecisionScale.ScaleLowPrecisionInPlace(
+                    gray,
+                    pixelCount,
+                    channels: 1,
+                    alphaLast: false,
+                    lut);
+            }
+
+            var expanded = expandedScratch.AsSpan(0, expandedByteCount);
+            if (plan.BytesPerPixel == 3)
+            {
+                GrayConverter.ExpandToBgr(gray, expanded, pixelCount);
+            }
+            else
+            {
+                GrayConverter.ExpandToBgra(gray, expanded, pixelCount);
+            }
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                expandedScratch.AsSpan(0, expandedByteCount + 4),
+                plan.Width,
+                plan.Height,
+                plan.BytesPerPixel,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(expandedScratch);
+            ArrayPool<byte>.Shared.Return(grayScratch);
+        }
+    }
+
     private void ApplyParameters(
         nint handle, TurboJpegDecodeOptions options, ExifOrientation orientation)
     {
@@ -605,6 +749,7 @@ public sealed class TurboJpegDecoder : IDisposable
         Direct8,
         Scale8InPlace,
         RgbToGrayFrom8,
+        GrayExpandFrom8,
     }
 
     private readonly struct DecodePlan
