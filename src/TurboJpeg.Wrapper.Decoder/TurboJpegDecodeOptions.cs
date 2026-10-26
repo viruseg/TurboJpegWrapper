@@ -47,7 +47,9 @@ public sealed record TurboJpegDecodeOptions
     /// <remarks>
     /// The default is <see langword="true"/>: a native warning is reported as a non-fatal
     /// <see cref="TurboJpegException"/>. When <see langword="false"/>, native warnings are ignored
-    /// and a best-effort BMP is returned; the output may be corrupt.
+    /// and a best-effort BMP is returned. The native destination is zero-filled before decoding,
+    /// so bytes that the decoder does not write are deterministic zeros; the output may still be
+    /// corrupt. Fatal errors are thrown in both modes.
     /// </remarks>
     public bool StopOnWarning { get; init; } = true;
 
@@ -71,8 +73,9 @@ public sealed record TurboJpegDecodeOptions
 
     /// <summary>Gets the maximum native intermediate memory in megabytes; 0 means no limit.</summary>
     /// <remarks>
-    /// The limit covers native TurboJPEG allocations. The returned BMP array and the auto-orient
-    /// scratch buffer are managed and are not counted against it.
+    /// The limit covers native TurboJPEG allocations. The returned BMP array, the auto-orient
+    /// scratch buffer, and the precision and CMYK conversion scratch buffers are managed and are
+    /// not counted against it.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     public int MaxMemoryMegabytes

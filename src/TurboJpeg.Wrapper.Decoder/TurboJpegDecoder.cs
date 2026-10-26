@@ -87,12 +87,16 @@ public sealed class TurboJpegDecoder : IDisposable
     /// </exception>
     /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
-    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// The image precision is outside the supported 2-16 bit range.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// The source pixel limit is exceeded, or the BMP or a decode scratch buffer would exceed
+    /// the maximum array length.
     /// </exception>
-    /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
+    /// <exception cref="TurboJpegException">
+    /// TurboJPEG could not decode the JPEG, or the JPEG produced a warning with the decoder's
+    /// default options.
+    /// </exception>
     public byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg) => DecodeToBmp(jpeg, _defaultOptions);
 
     /// <summary>Decodes a JPEG image to a complete BMP file using the specified options.</summary>
@@ -100,21 +104,28 @@ public sealed class TurboJpegDecoder : IDisposable
     /// <param name="options">The decoding options.</param>
     /// <returns>The complete BMP file contents.</returns>
     /// <remarks>
-    /// When <see cref="TurboJpegDecodeOptions.AutoOrient"/> is enabled, the EXIF orientation is
-    /// applied and the BMP dimensions may be transposed.
+    /// When <see cref="TurboJpegDecodeOptions.Crop"/> is set, the BMP contains only the cropped
+    /// region. When <see cref="TurboJpegDecodeOptions.AutoOrient"/> is enabled, the EXIF
+    /// orientation is applied afterward and the BMP dimensions may be transposed.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="jpeg"/> is empty or the requested scaling factor is not supported.
+    /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported, or
+    /// <see cref="TurboJpegDecodeOptions.Crop"/> is invalid: the region is outside the scaled
+    /// image, is not iMCU-aligned horizontally, or the JPEG is lossless or has unknown subsampling.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
-    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// The image precision is outside the supported 2-16 bit range.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// The source pixel limit is exceeded, or the BMP or a decode scratch buffer would exceed
+    /// the maximum array length.
     /// </exception>
-    /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
+    /// <exception cref="TurboJpegException">
+    /// TurboJPEG could not decode the JPEG, or the JPEG produced a warning while
+    /// <see cref="TurboJpegDecodeOptions.StopOnWarning"/> is <see langword="true"/>.
+    /// </exception>
     public byte[] DecodeToBmp(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -136,17 +147,23 @@ public sealed class TurboJpegDecoder : IDisposable
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported, or
-    /// <paramref name="destination"/> is too small.
+    /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported,
+    /// <paramref name="destination"/> is too small, or <see cref="TurboJpegDecodeOptions.Crop"/>
+    /// is invalid: the region is outside the scaled image, is not iMCU-aligned horizontally, or
+    /// the JPEG is lossless or has unknown subsampling.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
-    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// The image precision is outside the supported 2-16 bit range.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// The source pixel limit is exceeded, or the BMP or a decode scratch buffer would exceed
+    /// the maximum array length.
     /// </exception>
-    /// <exception cref="TurboJpegException">TurboJPEG could not decode the JPEG.</exception>
+    /// <exception cref="TurboJpegException">
+    /// TurboJPEG could not decode the JPEG, or the JPEG produced a warning while
+    /// <see cref="TurboJpegDecodeOptions.StopOnWarning"/> is <see langword="true"/>.
+    /// </exception>
     public int DecodeToBmp(
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,
@@ -173,12 +190,16 @@ public sealed class TurboJpegDecoder : IDisposable
     /// </exception>
     /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
-    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// The image precision is outside the supported 2-16 bit range.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// The source pixel limit is exceeded, or the BMP or a decode scratch buffer would exceed
+    /// the maximum array length.
     /// </exception>
-    /// <exception cref="TurboJpegException">TurboJPEG could not parse the JPEG header.</exception>
+    /// <exception cref="TurboJpegException">
+    /// TurboJPEG could not parse the JPEG header, or the JPEG produced a warning with the
+    /// decoder's default options.
+    /// </exception>
     public int GetBmpSize(ReadOnlySpan<byte> jpeg) => GetBmpSize(jpeg, _defaultOptions);
 
     /// <summary>Gets the size of the BMP that <see cref="DecodeToBmp(ReadOnlySpan{byte}, TurboJpegDecodeOptions)"/> would produce.</summary>
@@ -187,16 +208,22 @@ public sealed class TurboJpegDecoder : IDisposable
     /// <returns>The required BMP file size in bytes.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="jpeg"/> is empty or the requested scaling factor is not supported.
+    /// <paramref name="jpeg"/> is empty, the requested scaling factor is not supported, or
+    /// <see cref="TurboJpegDecodeOptions.Crop"/> is invalid: the region is outside the scaled
+    /// image, is not iMCU-aligned horizontally, or the JPEG is lossless or has unknown subsampling.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The decoder has been disposed.</exception>
     /// <exception cref="TurboJpegUnsupportedException">
-    /// The image precision is not 8 bits or the image uses a CMYK or YCCK color space.
+    /// The image precision is outside the supported 2-16 bit range.
     /// </exception>
     /// <exception cref="TurboJpegImageTooLargeException">
-    /// The decoded image would exceed the configured pixel limit or the maximum array length.
+    /// The source pixel limit is exceeded, or the BMP or a decode scratch buffer would exceed
+    /// the maximum array length.
     /// </exception>
-    /// <exception cref="TurboJpegException">TurboJPEG could not parse the JPEG header.</exception>
+    /// <exception cref="TurboJpegException">
+    /// TurboJPEG could not parse the JPEG header, or the JPEG produced a warning while
+    /// <see cref="TurboJpegDecodeOptions.StopOnWarning"/> is <see langword="true"/>.
+    /// </exception>
     public int GetBmpSize(ReadOnlySpan<byte> jpeg, TurboJpegDecodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

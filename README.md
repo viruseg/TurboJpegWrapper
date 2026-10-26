@@ -4,7 +4,7 @@
 
 | Managed package | Namespace | Purpose |
 | --- | --- | --- |
-| `TurboJpeg.Wrapper.Decoder` | `TurboJpegWrapper.Decoder` | Decodes 8-bit lossy, progressive, and lossless JPEG files to complete 8-, 24-, or 32-bit BMP files, with optional scaling and EXIF auto-orientation. |
+| `TurboJpeg.Wrapper.Decoder` | `TurboJpegWrapper.Decoder` | Decodes 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK JPEG files (lossy, lossless, progressive, and arithmetic) to complete 8-, 24-, or 32-bit BMP files, with scaling, cropping, EXIF auto-orientation, and a warning policy. |
 | `TurboJpeg.Wrapper.Encoder` | `TurboJpegWrapper.Encoder` | Encodes uncompressed 1-, 4-, 8-, 16-, 24-, and 32-bit BMP files to JPEG, with quality, chroma subsampling, lossless, progressive, arithmetic coding, restart markers, and density options. |
 
 The managed packages contain no native code. Add exactly one native package that matches the deployment runtime; the same native package serves both managed packages.
