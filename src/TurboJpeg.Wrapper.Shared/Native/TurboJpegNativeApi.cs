@@ -57,6 +57,7 @@ internal static unsafe partial class TurboJpegNativeApi
     internal const int PixelFormatBgrx = 3;
     internal const int PixelFormatGray = 6;
     internal const int PixelFormatBgra = 8;
+    internal const int PixelFormatCmyk = 11;
 
     internal const int ErrorWarning = 0;
     internal const int ErrorFatal = 1;

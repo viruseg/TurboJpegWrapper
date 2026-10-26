@@ -72,7 +72,7 @@ internal static class JpegPatcher
                 break;
             }
 
-            if (marker is 0xC0 or 0xC1 or 0xC2)
+            if (marker is 0xC0 or 0xC1 or 0xC2 or 0xC3)
             {
                 if (length < 8)
                 {
