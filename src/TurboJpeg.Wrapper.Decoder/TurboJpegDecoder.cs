@@ -1,6 +1,7 @@
 using System.Buffers;
 using TurboJpegWrapper.Decoder.Internal;
 using TurboJpegWrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper.Decoder.Internal.Conversion;
 using TurboJpegWrapper.Decoder.Internal.Exif;
 using TurboJpegWrapper.Decoder.Internal.Native;
 using TurboJpegWrapper.Internal.Native;
@@ -216,7 +217,9 @@ public sealed class TurboJpegDecoder : IDisposable
 
         var includeSubsampling = options.Crop is not null;
         var includeLossless =
-            options.Crop is not null || options.ScalingFactor != TurboJpegScalingFactor.One;
+            options.BmpBitDepth == TurboJpegBmpBitDepth.Bpp8
+            || options.Crop is not null
+            || options.ScalingFactor != TurboJpegScalingFactor.One;
         var info = ReadHeader(
             jpeg,
             tolerateWarnings: !options.StopOnWarning,
@@ -225,6 +228,11 @@ public sealed class TurboJpegDecoder : IDisposable
             includeLossless);
         if (!info.CanDecodeToBmp)
         {
+            if (info.Precision is < 2 or > 16)
+            {
+                ThrowHelper.ThrowUnsupportedPrecision(info.Precision);
+            }
+
             ThrowHelper.ThrowCannotDecodeToBmp(info.Precision, info.Colorspace);
         }
 
@@ -275,6 +283,19 @@ public sealed class TurboJpegDecoder : IDisposable
                 break;
         }
 
+        var pipeline = DecodePipeline.Direct8;
+        if (bitDepth == TurboJpegBmpBitDepth.Bpp8
+            && info.IsLossless
+            && info.Colorspace == TurboJpegColorspace.Rgb)
+        {
+            pixelFormat = TurboJpegNativeApi.PixelFormatBgr;
+            pipeline = DecodePipeline.RgbToGrayFrom8;
+        }
+        else if (info.Precision is >= 2 and <= 7)
+        {
+            pipeline = DecodePipeline.Scale8InPlace;
+        }
+
         var pixelsPerMeterX = BmpHeaderWriter.ToPixelsPerMeter(info.DensityX, info.DensityUnits);
         var pixelsPerMeterY = BmpHeaderWriter.ToPixelsPerMeter(info.DensityY, info.DensityUnits);
 
@@ -284,7 +305,9 @@ public sealed class TurboJpegDecoder : IDisposable
             outputWidth,
             outputHeight,
             bitDepth,
+            info.Precision,
             orientation,
+            pipeline,
             pixelFormat,
             BmpHeaderWriter.GetPixelOffset(bitDepth),
             BmpHeaderWriter.GetBytesPerPixel(bitDepth),
@@ -313,20 +336,42 @@ public sealed class TurboJpegDecoder : IDisposable
             plan.PixelsPerMeterY);
         BmpHeaderWriter.ClearPadding(bmp, plan.OutputWidth, plan.OutputHeight, plan.BitDepth);
 
+        var lut = plan.Pipeline != DecodePipeline.Direct8 && plan.Precision is >= 2 and <= 7
+            ? PrecisionScale.GetLut(plan.Precision)
+            : null;
+
         if (!plan.SwapsAxes)
         {
-            if (!options.StopOnWarning)
+            if (plan.Pipeline == DecodePipeline.RgbToGrayFrom8)
             {
-                bmp[plan.PixelOffset..].Clear();
+                DecodeRgbToGrayToBmp(handle, jpeg, options, in plan, bmp, lut);
             }
+            else
+            {
+                if (!options.StopOnWarning)
+                {
+                    bmp[plan.PixelOffset..].Clear();
+                }
 
-            Decompress8Into(
-                handle,
-                jpeg,
-                bmp[plan.PixelOffset..],
-                plan.OutputStride,
-                plan.PixelFormat,
-                tolerateWarnings: !options.StopOnWarning);
+                Decompress8Into(
+                    handle,
+                    jpeg,
+                    bmp[plan.PixelOffset..],
+                    plan.OutputStride,
+                    plan.PixelFormat,
+                    tolerateWarnings: !options.StopOnWarning);
+
+                if (plan.Pipeline == DecodePipeline.Scale8InPlace)
+                {
+                    ScaleRowsInPlace(
+                        bmp[plan.PixelOffset..],
+                        plan.Width,
+                        plan.Height,
+                        plan.OutputStride,
+                        plan.BytesPerPixel,
+                        lut!);
+                }
+            }
 
             if (plan.Orientation is ExifOrientation.FlipHorizontal or ExifOrientation.Rotate180)
             {
@@ -338,6 +383,12 @@ public sealed class TurboJpegDecoder : IDisposable
                     plan.BytesPerPixel);
             }
 
+            return;
+        }
+
+        if (plan.Pipeline == DecodePipeline.RgbToGrayFrom8)
+        {
+            DecodeRgbToGrayWithOrientation(handle, jpeg, options, in plan, bmp, lut);
             return;
         }
 
@@ -362,6 +413,17 @@ public sealed class TurboJpegDecoder : IDisposable
                 plan.PixelFormat,
                 tolerateWarnings: !options.StopOnWarning);
 
+            if (plan.Pipeline == DecodePipeline.Scale8InPlace)
+            {
+                ScaleRowsInPlace(
+                    sourcePixels[..sourceByteCount],
+                    plan.Width,
+                    plan.Height,
+                    sourcePitch,
+                    plan.BytesPerPixel,
+                    lut!);
+            }
+
             BmpOrientationWriter.Write(
                 bmp[plan.PixelOffset..],
                 sourcePixels,
@@ -374,6 +436,138 @@ public sealed class TurboJpegDecoder : IDisposable
         finally
         {
             ArrayPool<byte>.Shared.Return(scratch);
+        }
+    }
+
+    private static void ScaleRowsInPlace(
+        Span<byte> pixels,
+        int width,
+        int height,
+        int stride,
+        int bytesPerPixel,
+        byte[] lut)
+    {
+        var rowByteCount = width * bytesPerPixel;
+
+        for (var y = 0; y < height; y++)
+        {
+            PrecisionScale.ScaleLowPrecisionInPlace(
+                pixels.Slice(y * stride, rowByteCount),
+                width,
+                bytesPerPixel,
+                alphaLast: bytesPerPixel == 4,
+                lut);
+        }
+    }
+
+    private static unsafe void DecodeRgbToGrayToBmp(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp,
+        byte[]? lut)
+    {
+        var sourcePitch = checked(plan.Width * 3);
+        var sourceByteCount = checked(sourcePitch * plan.Height);
+        var scratch = ArrayPool<byte>.Shared.Rent(sourceByteCount);
+
+        try
+        {
+            var sourcePixels = scratch.AsSpan(0, sourceByteCount);
+            if (!options.StopOnWarning)
+            {
+                sourcePixels.Clear();
+            }
+
+            Decompress8Into(
+                handle,
+                jpeg,
+                sourcePixels,
+                sourcePitch,
+                TurboJpegNativeApi.PixelFormatBgr,
+                tolerateWarnings: !options.StopOnWarning);
+
+            if (lut is not null)
+            {
+                PrecisionScale.ScaleLowPrecisionInPlace(
+                    sourcePixels,
+                    plan.Width * plan.Height,
+                    channels: 3,
+                    alphaLast: false,
+                    lut);
+            }
+
+            var destination = bmp[plan.PixelOffset..];
+            for (var y = 0; y < plan.Height; y++)
+            {
+                LumaConverter.BgrToGray(
+                    sourcePixels.Slice(y * sourcePitch, sourcePitch),
+                    destination.Slice(y * plan.OutputStride, plan.Width),
+                    plan.Width);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(scratch);
+        }
+    }
+
+    private static unsafe void DecodeRgbToGrayWithOrientation(
+        nint handle,
+        ReadOnlySpan<byte> jpeg,
+        TurboJpegDecodeOptions options,
+        in DecodePlan plan,
+        Span<byte> bmp,
+        byte[]? lut)
+    {
+        var pixelCount = checked(plan.Width * plan.Height);
+        var sourceByteCount = checked(pixelCount * 3);
+        var bgrScratch = ArrayPool<byte>.Shared.Rent(sourceByteCount);
+        var grayScratch = ArrayPool<byte>.Shared.Rent(pixelCount);
+
+        try
+        {
+            var bgr = bgrScratch.AsSpan(0, sourceByteCount);
+            if (!options.StopOnWarning)
+            {
+                bgr.Clear();
+            }
+
+            Decompress8Into(
+                handle,
+                jpeg,
+                bgr,
+                checked(plan.Width * 3),
+                TurboJpegNativeApi.PixelFormatBgr,
+                tolerateWarnings: !options.StopOnWarning);
+
+            if (lut is not null)
+            {
+                PrecisionScale.ScaleLowPrecisionInPlace(
+                    bgr,
+                    pixelCount,
+                    channels: 3,
+                    alphaLast: false,
+                    lut);
+            }
+
+            var gray = grayScratch.AsSpan(0, pixelCount);
+            LumaConverter.BgrToGray(bgr, gray, pixelCount);
+
+            BmpOrientationWriter.Write(
+                bmp[plan.PixelOffset..],
+                gray,
+                plan.Width,
+                plan.Height,
+                1,
+                plan.OutputStride,
+                plan.Orientation);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(grayScratch);
+            ArrayPool<byte>.Shared.Return(bgrScratch);
         }
     }
 
@@ -406,6 +600,13 @@ public sealed class TurboJpegDecoder : IDisposable
             ref _appliedStopOnWarning);
     }
 
+    internal enum DecodePipeline
+    {
+        Direct8,
+        Scale8InPlace,
+        RgbToGrayFrom8,
+    }
+
     private readonly struct DecodePlan
     {
         internal DecodePlan(
@@ -414,7 +615,9 @@ public sealed class TurboJpegDecoder : IDisposable
             int outputWidth,
             int outputHeight,
             TurboJpegBmpBitDepth bitDepth,
+            int precision,
             ExifOrientation orientation,
+            DecodePipeline pipeline,
             int pixelFormat,
             int pixelOffset,
             int bytesPerPixel,
@@ -429,7 +632,9 @@ public sealed class TurboJpegDecoder : IDisposable
             OutputWidth = outputWidth;
             OutputHeight = outputHeight;
             BitDepth = bitDepth;
+            Precision = precision;
             Orientation = orientation;
+            Pipeline = pipeline;
             PixelFormat = pixelFormat;
             PixelOffset = pixelOffset;
             BytesPerPixel = bytesPerPixel;
@@ -450,7 +655,11 @@ public sealed class TurboJpegDecoder : IDisposable
 
         internal TurboJpegBmpBitDepth BitDepth { get; }
 
+        internal int Precision { get; }
+
         internal ExifOrientation Orientation { get; }
+
+        internal DecodePipeline Pipeline { get; }
 
         internal int PixelFormat { get; }
 

@@ -35,6 +35,12 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void ThrowUnsupportedPrecision(int precision) =>
+        throw new TurboJpegUnsupportedException(
+            $"The JPEG precision {precision} is not supported; supported precision is 2-16 bits.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ThrowSourceImageTooLarge(int width, int height, int maxPixels) =>
         throw new TurboJpegImageTooLargeException(
             $"The source image ({width}x{height}) contains {(long)width * height} pixels, " +

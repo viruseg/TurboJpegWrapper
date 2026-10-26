@@ -82,6 +82,9 @@ public sealed class GetImageInfoTests
     }
 
     [Theory]
+    [InlineData(TurboJpegColorspace.YCbCr, 2, true)]
+    [InlineData(TurboJpegColorspace.Grayscale, 2, true)]
+    [InlineData(TurboJpegColorspace.Rgb, 2, true)]
     [InlineData(TurboJpegColorspace.YCbCr, 8, true)]
     [InlineData(TurboJpegColorspace.Grayscale, 8, true)]
     [InlineData(TurboJpegColorspace.Rgb, 8, true)]
