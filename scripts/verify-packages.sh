@@ -20,25 +20,39 @@ nupkg() {
 }
 
 package_count="$(find "$output" -maxdepth 1 -type f -name '*.nupkg' | wc -l | tr -d ' ')"
-[[ "$package_count" -eq 6 ]] || fail "expected 6 packages, found $package_count"
+[[ "$package_count" -eq 7 ]] || fail "expected 7 packages, found $package_count"
 
-main="$(nupkg TurboJpeg.Wrapper.Decoder)"
-[[ -f "$main" ]] || fail "missing $main"
-main_entries="$(entries "$main")"
-grep -qxF "lib/net10.0/TurboJpeg.Wrapper.Decoder.dll" <<<"$main_entries" || fail "managed package has no lib/net10.0/TurboJpeg.Wrapper.Decoder.dll"
-grep -qxF "README.md" <<<"$main_entries" || fail "managed package has no README.md"
-grep -qxF "LICENSE" <<<"$main_entries" || fail "managed package has no LICENSE"
-grep -qxF "THIRD-PARTY-NOTICES.md" <<<"$main_entries" || fail "managed package has no THIRD-PARTY-NOTICES.md"
-if grep -q '^runtimes/' <<<"$main_entries"; then
-  fail "managed package contains runtime assets"
-fi
-main_nuspec="$(unzip -p "$main" "$(grep '\.nuspec$' <<<"$main_entries")")"
-if ! grep -q '<license type="file">LICENSE</license>' <<<"$main_nuspec"; then
-  fail "managed package has no file-based LICENSE metadata"
-fi
-if grep -q 'dependency id="TurboJpeg.Wrapper.Native.' <<<"$main_nuspec"; then
-  fail "managed package depends on a native package"
-fi
+check_managed() {
+  local id="$1"
+  local package
+  package="$(nupkg "$id")"
+  [[ -f "$package" ]] || fail "missing $package"
+  local package_entries
+  package_entries="$(entries "$package")"
+  grep -qxF "lib/net10.0/$id.dll" <<<"$package_entries" || fail "$id has no lib/net10.0/$id.dll"
+  grep -qxF "README.md" <<<"$package_entries" || fail "$id has no README.md"
+  grep -qxF "LICENSE" <<<"$package_entries" || fail "$id has no LICENSE"
+  grep -qxF "THIRD-PARTY-NOTICES.md" <<<"$package_entries" || fail "$id has no THIRD-PARTY-NOTICES.md"
+  if grep -q '^runtimes/' <<<"$package_entries"; then
+    fail "$id contains runtime assets"
+  fi
+  local package_readme
+  package_readme="$(unzip -p "$package" README.md)"
+  if ! grep -qF "$id" <<<"$package_readme"; then
+    fail "$id README does not mention the package ID"
+  fi
+  local package_nuspec
+  package_nuspec="$(unzip -p "$package" "$(grep '\.nuspec$' <<<"$package_entries")")"
+  if ! grep -q '<license type="file">LICENSE</license>' <<<"$package_nuspec"; then
+    fail "$id has no file-based LICENSE metadata"
+  fi
+  if grep -q 'dependency id="TurboJpeg.Wrapper.Native.' <<<"$package_nuspec"; then
+    fail "$id depends on a native package"
+  fi
+}
+
+check_managed TurboJpeg.Wrapper.Decoder
+check_managed TurboJpeg.Wrapper.Encoder
 
 check_native() {
   local id="$1"

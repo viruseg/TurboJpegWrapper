@@ -58,16 +58,22 @@ cat > "$smoke_dir/Smoke.csproj" <<EOF
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="TurboJpeg.Wrapper.Decoder" Version="$version" />
+    <PackageReference Include="TurboJpeg.Wrapper.Encoder" Version="$version" />
     <PackageReference Include="TurboJpeg.Wrapper.Native.$native_suffix" Version="$version" />
   </ItemGroup>
 </Project>
 EOF
 
 cat > "$smoke_dir/Program.cs" <<'CS'
-using TurboJpegWrapper.Decoder;
+using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
+using EncoderApi = TurboJpegWrapper.Encoder.TurboJpeg;
 
-var bmp = TurboJpeg.DecodeToBmp(File.ReadAllBytes(args[0]));
-return bmp.Length > 54 && bmp[0] == (byte)'B' && bmp[1] == (byte)'M' ? 0 : 1;
+var jpeg = File.ReadAllBytes(args[0]);
+var bmp = DecoderApi.DecodeToBmp(jpeg);
+var encoded = EncoderApi.EncodeToJpeg(bmp);
+var roundTrip = DecoderApi.DecodeToBmp(encoded);
+var info = DecoderApi.GetImageInfo(encoded);
+return info.Width > 0 && info.Height > 0 && roundTrip.Length > 54 ? 0 : 1;
 CS
 
 NUGET_PACKAGES="$packages_source" dotnet publish artifacts/smoke/Smoke.csproj -c Release -r "$rid" --self-contained false -o artifacts/smoke/publish --nologo

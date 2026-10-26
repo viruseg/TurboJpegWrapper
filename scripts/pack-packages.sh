@@ -9,6 +9,7 @@ mkdir -p "$output"
 
 projects=(
   "src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj"
+  "src/TurboJpeg.Wrapper.Encoder/TurboJpeg.Wrapper.Encoder.csproj"
   "src/native/TurboJpeg.Wrapper.Native.win-x64/TurboJpeg.Wrapper.Native.win-x64.csproj"
   "src/native/TurboJpeg.Wrapper.Native.win-arm64/TurboJpeg.Wrapper.Native.win-arm64.csproj"
   "src/native/TurboJpeg.Wrapper.Native.linux-x64/TurboJpeg.Wrapper.Native.linux-x64.csproj"
