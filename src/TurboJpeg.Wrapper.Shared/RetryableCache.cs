@@ -1,4 +1,4 @@
-namespace TurboJpegWrapper.Decoder.Internal;
+namespace TurboJpegWrapper.Internal;
 
 internal sealed class RetryableCache<T> where T : class
 {
@@ -28,7 +28,7 @@ internal sealed class RetryableCache<T> where T : class
                 value = _factory();
                 if (value is null)
                 {
-                    ThrowHelper.ThrowCacheFactoryReturnedNull();
+                    throw new InvalidOperationException("The cache factory returned null.");
                 }
 
                 Volatile.Write(ref _value, value);

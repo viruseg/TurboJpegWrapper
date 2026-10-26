@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using TurboJpegWrapper.Decoder;
 using TurboJpegWrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 
@@ -99,7 +100,7 @@ public sealed class NativeLoaderTests
     {
         var libraryPath = TurboJpegNativeLoader.GetCandidatePaths().First(File.Exists);
         var handle = TurboJpegNativeLoader.Resolve(
-            TurboJpegNative.LibraryName,
+            TurboJpegNativeApi.LibraryName,
             typeof(TurboJpegNative).Assembly,
             null,
             libraryPath);
@@ -124,7 +125,7 @@ public sealed class NativeLoaderTests
     public void Resolve_EmptyOrWhitespaceOverride_UsesFallback(string overridePath)
     {
         var handle = TurboJpegNativeLoader.Resolve(
-            TurboJpegNative.LibraryName,
+            TurboJpegNativeApi.LibraryName,
             typeof(TurboJpegNative).Assembly,
             null,
             overridePath);
@@ -149,7 +150,7 @@ public sealed class NativeLoaderTests
 
         var exception = Assert.Throws<TurboJpegException>(() =>
             TurboJpegNativeLoader.Resolve(
-                TurboJpegNative.LibraryName,
+                TurboJpegNativeApi.LibraryName,
                 typeof(TurboJpegNative).Assembly,
                 null,
                 missingPath));

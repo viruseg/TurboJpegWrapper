@@ -1,23 +1,36 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
-using TurboJpegWrapper.Decoder.Internal;
 
-namespace TurboJpegWrapper.Decoder.Internal.Native;
+namespace TurboJpegWrapper.Internal.Native;
 
 internal static class TurboJpegNativeLoader
 {
     internal const string OverrideEnvironmentVariable = "TURBOJPEG_NATIVE_LIBRARY_PATH";
 
+    private static readonly object s_registrationLock = new();
+    private static Func<string, Exception?, Exception>? s_exceptionFactory;
     private static int s_registered;
 
-    internal static void EnsureRegistered()
+    internal static void EnsureRegistered(Func<string, Exception?, Exception> exceptionFactory)
     {
-        if (Interlocked.Exchange(ref s_registered, 1) != 0)
+        ArgumentNullException.ThrowIfNull(exceptionFactory);
+
+        if (Volatile.Read(ref s_registered) != 0)
         {
             return;
         }
 
-        NativeLibrary.SetDllImportResolver(typeof(TurboJpegNative).Assembly, Resolve);
+        lock (s_registrationLock)
+        {
+            s_exceptionFactory ??= exceptionFactory;
+            if (s_registered != 0)
+            {
+                return;
+            }
+
+            NativeLibrary.SetDllImportResolver(typeof(TurboJpegNativeApi).Assembly, Resolve);
+            Volatile.Write(ref s_registered, 1);
+        }
     }
 
     internal static nint Resolve(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
@@ -35,7 +48,7 @@ internal static class TurboJpegNativeLoader
         DllImportSearchPath? searchPath,
         string? overridePath)
     {
-        if (!string.Equals(libraryName, TurboJpegNative.LibraryName, StringComparison.Ordinal))
+        if (!string.Equals(libraryName, TurboJpegNativeApi.LibraryName, StringComparison.Ordinal))
         {
             return nint.Zero;
         }
@@ -48,14 +61,16 @@ internal static class TurboJpegNativeLoader
             }
             catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
             {
-                ThrowHelper.Throw(TurboJpegNative.CreateLoadException(ex, overridePath));
+                throw CreateLoadException(ex, overridePath);
             }
         }
 
         var os = GetCurrentPlatform();
         if (GetRuntimeIdentifier(os, RuntimeInformation.ProcessArchitecture) is null)
         {
-            ThrowHelper.ThrowNativeLoadingUnsupported(os, RuntimeInformation.ProcessArchitecture);
+            throw new PlatformNotSupportedException(
+                $"TurboJPEG native library loading is not supported on {os} with architecture " +
+                $"{RuntimeInformation.ProcessArchitecture}. Set {OverrideEnvironmentVariable} to an explicit library path.");
         }
 
         var attempts = new List<string>();
@@ -82,16 +97,54 @@ internal static class TurboJpegNativeLoader
 
         try
         {
-            return NativeLibrary.Load(TurboJpegNative.LibraryName, assembly, searchPath);
+            return NativeLibrary.Load(TurboJpegNativeApi.LibraryName, assembly, searchPath);
         }
         catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
         {
-            attempts.Add($"operating system search path for '{TurboJpegNative.LibraryName}' ({ex.Message})");
+            attempts.Add($"operating system search path for '{TurboJpegNativeApi.LibraryName}' ({ex.Message})");
             lastFailure = ex;
         }
 
-        ThrowHelper.ThrowNativeLoadFailed(attempts, lastFailure!);
-        return nint.Zero;
+        throw GetExceptionFactory()(
+            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, " +
+            $"TurboJPEG API version {TurboJpegNativeApi.ApiVersion}). " +
+            $"Attempts: {string.Join("; ", attempts)}. " +
+            $"Set {OverrideEnvironmentVariable} to an explicit library path.",
+            lastFailure!);
+    }
+
+    internal static Exception CreateLoadException(Exception innerException, string? overridePath)
+    {
+        var version = $"libjpeg-turbo 3.2.0, TurboJPEG API version {TurboJpegNativeApi.ApiVersion}";
+        var exceptionFactory = GetExceptionFactory();
+
+        if (innerException is EntryPointNotFoundException)
+        {
+            var foundAt = string.IsNullOrWhiteSpace(overridePath)
+                ? "in one of the candidate locations or on the operating system search path"
+                : $"at the configured override path '{overridePath}'";
+
+            return exceptionFactory(
+                $"The TurboJPEG native library was found {foundAt}, but a required entry point is missing. " +
+                $"This library requires {version}; install TurboJPEG 3.2.0 or newer. " +
+                $"Reason: {innerException.Message}",
+                innerException);
+        }
+
+        if (!string.IsNullOrWhiteSpace(overridePath))
+        {
+            return exceptionFactory(
+                $"Failed to load the TurboJPEG native library from '{overridePath}' specified by " +
+                $"{OverrideEnvironmentVariable} ({version}). " +
+                $"The operating system search path was not used. Reason: {innerException.Message}",
+                innerException);
+        }
+
+        return exceptionFactory(
+            $"Failed to load the TurboJPEG native library ({version}). " +
+            $"Expected the library at one of: {string.Join(", ", GetCandidatePaths())}, " +
+            $"or on the operating system search path. Reason: {innerException.Message}",
+            innerException);
     }
 
     internal static string? GetRuntimeIdentifier(OSPlatform os, Architecture architecture)
@@ -146,8 +199,8 @@ internal static class TurboJpegNativeLoader
             return "libturbojpeg.dylib";
         }
 
-        ThrowHelper.ThrowLibraryFileNameUnknown(os);
-        return null!;
+        throw new PlatformNotSupportedException(
+            $"The TurboJPEG native library file name is not known for OS '{os}'.");
     }
 
     internal static IReadOnlyList<string> GetCandidatePaths() =>
@@ -180,6 +233,12 @@ internal static class TurboJpegNativeLoader
         return paths;
     }
 
+    private static Func<string, Exception?, Exception> GetExceptionFactory() =>
+        Volatile.Read(ref s_exceptionFactory)
+        ?? throw new InvalidOperationException(
+            "The TurboJPEG exception factory has not been registered. The managed package must call " +
+            $"{nameof(TurboJpegNativeLoader)}.{nameof(EnsureRegistered)} from a module initializer.");
+
     private static OSPlatform GetCurrentPlatform()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -197,7 +256,7 @@ internal static class TurboJpegNativeLoader
             return OSPlatform.OSX;
         }
 
-        ThrowHelper.ThrowPlatformUnsupported();
-        return default;
+        throw new PlatformNotSupportedException(
+            "TurboJPEG native library loading is supported only on Windows, Linux, and macOS.");
     }
 }

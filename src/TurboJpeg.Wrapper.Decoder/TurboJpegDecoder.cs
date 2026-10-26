@@ -3,6 +3,7 @@ using TurboJpegWrapper.Decoder.Internal;
 using TurboJpegWrapper.Decoder.Internal.Bmp;
 using TurboJpegWrapper.Decoder.Internal.Exif;
 using TurboJpegWrapper.Decoder.Internal.Native;
+using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Decoder;
 
@@ -238,13 +239,13 @@ public sealed class TurboJpegDecoder : IDisposable
         switch (bitDepth)
         {
             case TurboJpegBmpBitDepth.Bpp8:
-                pixelFormat = TurboJpegNative.PixelFormatGray;
+                pixelFormat = TurboJpegNativeApi.PixelFormatGray;
                 break;
             case TurboJpegBmpBitDepth.Bpp24:
-                pixelFormat = TurboJpegNative.PixelFormatBgr;
+                pixelFormat = TurboJpegNativeApi.PixelFormatBgr;
                 break;
             case TurboJpegBmpBitDepth.Bpp32:
-                pixelFormat = TurboJpegNative.PixelFormatBgra;
+                pixelFormat = TurboJpegNativeApi.PixelFormatBgra;
                 break;
             default:
                 ThrowHelper.ThrowBmpBitDepthOutOfRange(nameof(options), bitDepth, null);
@@ -339,14 +340,14 @@ public sealed class TurboJpegDecoder : IDisposable
         var bottomUp = orientation is ExifOrientation.Normal or ExifOrientation.FlipHorizontal
             ? 1
             : 0;
-        ApplyParameter(handle, TurboJpegNative.ParamBottomUp, bottomUp, ref _appliedBottomUp);
-        ApplyParameter(handle, TurboJpegNative.ParamMaxPixels, options.MaxPixels, ref _appliedMaxPixels);
-        ApplyParameter(handle, TurboJpegNative.ParamMaxMemory, options.MaxMemoryMegabytes, ref _appliedMaxMemory);
-        ApplyParameter(handle, TurboJpegNative.ParamScanLimit, options.ScanLimit, ref _appliedScanLimit);
-        ApplyParameter(handle, TurboJpegNative.ParamFastDct, options.FastDct ? 1 : 0, ref _appliedFastDct);
+        ApplyParameter(handle, TurboJpegNativeApi.ParamBottomUp, bottomUp, ref _appliedBottomUp);
+        ApplyParameter(handle, TurboJpegNativeApi.ParamMaxPixels, options.MaxPixels, ref _appliedMaxPixels);
+        ApplyParameter(handle, TurboJpegNativeApi.ParamMaxMemory, options.MaxMemoryMegabytes, ref _appliedMaxMemory);
+        ApplyParameter(handle, TurboJpegNativeApi.ParamScanLimit, options.ScanLimit, ref _appliedScanLimit);
+        ApplyParameter(handle, TurboJpegNativeApi.ParamFastDct, options.FastDct ? 1 : 0, ref _appliedFastDct);
         ApplyParameter(
             handle,
-            TurboJpegNative.ParamFastUpsample,
+            TurboJpegNativeApi.ParamFastUpsample,
             options.FastUpsampling ? 1 : 0,
             ref _appliedFastUpsample);
         ApplyScalingFactor(handle, options.ScalingFactor);
@@ -425,7 +426,7 @@ public sealed class TurboJpegDecoder : IDisposable
         fixed (byte* jpegBuf = jpeg)
         fixed (byte* dstBuf = destination)
         {
-            if (TurboJpegNative.Decompress8(
+            if (TurboJpegNativeApi.Decompress8(
                     handle,
                     jpegBuf,
                     (nuint)jpeg.Length,
@@ -463,30 +464,30 @@ public sealed class TurboJpegDecoder : IDisposable
         {
             fixed (byte* jpegBuf = jpeg)
             {
-                if (TurboJpegNative.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0)
+                if (TurboJpegNativeApi.DecompressHeader(handle, jpegBuf, (nuint)jpeg.Length) != 0)
                 {
                     ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
                 }
             }
 
-            var width = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegWidth);
-            var height = TurboJpegNative.Get(handle, TurboJpegNative.ParamJpegHeight);
-            var precision = TurboJpegNative.Get(handle, TurboJpegNative.ParamPrecision);
-            var colorspace = TurboJpegNative.Get(handle, TurboJpegNative.ParamColorspace);
+            var width = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamJpegWidth);
+            var height = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamJpegHeight);
+            var precision = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamPrecision);
+            var colorspace = TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamColorspace);
             var subsampling = includeSubsampling
-                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamSubsamp)
+                ? TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamSubsamp)
                 : (int)TurboJpegSubsampling.Unknown;
             var lossless = includeLossless
-                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamLossless)
+                ? TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamLossless)
                 : 0;
             var densityX = includeDensity
-                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamXDensity)
+                ? TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamXDensity)
                 : 0;
             var densityY = includeDensity
-                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamYDensity)
+                ? TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamYDensity)
                 : 0;
             var densityUnits = includeDensity
-                ? TurboJpegNative.Get(handle, TurboJpegNative.ParamDensityUnits)
+                ? TurboJpegNativeApi.Get(handle, TurboJpegNativeApi.ParamDensityUnits)
                 : 0;
 
             if (width <= 0 || height <= 0)
@@ -596,7 +597,7 @@ public sealed class TurboJpegDecoder : IDisposable
             return;
         }
 
-        if (TurboJpegNative.SetScalingFactor(
+        if (TurboJpegNativeApi.SetScalingFactor(
                 handle,
                 new TjScalingFactor
                 {
@@ -612,7 +613,7 @@ public sealed class TurboJpegDecoder : IDisposable
 
     private static void SetParameter(nint handle, int parameter, int value)
     {
-        if (TurboJpegNative.Set(handle, parameter, value) != 0)
+        if (TurboJpegNativeApi.Set(handle, parameter, value) != 0)
         {
             ThrowHelper.Throw(TurboJpegNative.CreateException(handle));
         }

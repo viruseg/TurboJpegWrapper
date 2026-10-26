@@ -1,4 +1,4 @@
-using TurboJpegWrapper.Decoder.Internal;
+using TurboJpegWrapper.Internal;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 

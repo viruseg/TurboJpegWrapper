@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using TurboJpegWrapper.Decoder.Internal.Exif;
-using TurboJpegWrapper.Decoder.Internal.Native;
 
 namespace TurboJpegWrapper.Decoder.Internal;
 
@@ -113,41 +111,6 @@ internal static class ThrowHelper
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static void ThrowCacheFactoryReturnedNull() =>
-        throw new InvalidOperationException("The cache factory returned null.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void Throw(Exception exception) =>
         throw exception;
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static void ThrowNativeLoadingUnsupported(OSPlatform os, Architecture architecture) =>
-        throw new PlatformNotSupportedException(
-            $"TurboJPEG native library loading is not supported on {os} with architecture " +
-            $"{architecture}. Set {TurboJpegNativeLoader.OverrideEnvironmentVariable} to an explicit library path.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static void ThrowNativeLoadFailed(
-        IReadOnlyList<string> attempts, Exception lastFailure) =>
-        throw new TurboJpegException(
-            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, " +
-            $"TurboJPEG API version {TurboJpegNative.ApiVersion}). " +
-            $"Attempts: {string.Join("; ", attempts)}. " +
-            $"Set {TurboJpegNativeLoader.OverrideEnvironmentVariable} to an explicit library path.",
-            lastFailure);
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static void ThrowLibraryFileNameUnknown(OSPlatform os) =>
-        throw new PlatformNotSupportedException(
-            $"The TurboJPEG native library file name is not known for OS '{os}'.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    internal static void ThrowPlatformUnsupported() =>
-        throw new PlatformNotSupportedException(
-            "TurboJPEG native library loading is supported only on Windows, Linux, and macOS.");
 }
