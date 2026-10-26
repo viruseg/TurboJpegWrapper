@@ -31,6 +31,31 @@ public sealed class WarningPolicyTests
     }
 
     [Fact]
+    public void DecodeToBmp_Truncated12Bit_Tolerant_ReturnsBmpDeterministically()
+    {
+        var jpeg = TestFixtures.Load("truncated12.jpg");
+        Assert.Equal(12, new TurboJpegDecoder().GetImageInfo(jpeg).Precision);
+
+        var strict = Assert.Throws<TurboJpegException>(() =>
+            new TurboJpegDecoder().DecodeToBmp(jpeg));
+        Assert.False(strict.IsFatal);
+
+        var options = new TurboJpegDecodeOptions { StopOnWarning = false };
+        var first = new byte[16 * 1024 * 1024];
+        var second = new byte[16 * 1024 * 1024];
+        first.AsSpan().Fill(0xAA);
+        second.AsSpan().Fill(0x55);
+
+        int size1 = new TurboJpegDecoder().DecodeToBmp(jpeg, options, first);
+        int size2 = new TurboJpegDecoder().DecodeToBmp(jpeg, options, second);
+
+        Assert.Equal(size1, size2);
+        Assert.True(first.AsSpan(0, size1).SequenceEqual(second.AsSpan(0, size2)));
+        Assert.Equal((35, 23), (BmpTestHelpers.Width(first), BmpTestHelpers.Height(first)));
+        Assert.Equal(32, BmpTestHelpers.BitsPerPixel(first));
+    }
+
+    [Fact]
     public void DecodeToBmp_InvalidBytes_Tolerant_ThrowsFatal()
     {
         using var decoder = new TurboJpegDecoder();

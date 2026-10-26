@@ -983,7 +983,7 @@ public sealed class TurboJpegDecoder : IDisposable
     {
         var samples = scratch.AsSpan(0, checked(sampleCount * 2));
 
-        if (!tolerateWarnings)
+        if (tolerateWarnings)
         {
             samples.Clear();
         }
