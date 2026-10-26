@@ -156,17 +156,31 @@ public sealed class BufferApiTests
     }
 
     [Fact]
-    public void SizeCalculator_HugeDimensions_ThrowsWithoutAllocating()
+    public void SizeCalculator_HugeDimensions_ExceedArrayLimit_ThrowsWithoutAllocating()
     {
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
 
-        Assert.Throws<TurboJpegImageTooLargeException>(
-            () => SizeCalculator.GetMaxJpegSize(int.MaxValue, int.MaxValue, 420));
+        // libjpeg-turbo reports zero when the dimensions overflow its 32-bit size
+        // computation, so use the largest area that still yields a nonzero result
+        // above Array.MaxLength. Verified: 30000x30000 -> 2,700,002,048 bytes.
+        var exception = Assert.Throws<TurboJpegImageTooLargeException>(
+            () => SizeCalculator.GetMaxJpegSize(
+                30_000, 30_000, (int)TurboJpegSubsampling.Yuv420));
 
+        Assert.Contains("maximum array length", exception.Message, StringComparison.Ordinal);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
         Assert.True(
             allocated < 1024 * 1024,
             $"GetMaxJpegSize allocated {allocated} bytes while rejecting huge dimensions.");
+    }
+
+    [Fact]
+    public void SizeCalculator_InvalidSubsampling_ThrowsImageTooLargeException()
+    {
+        var exception = Assert.Throws<TurboJpegImageTooLargeException>(
+            () => SizeCalculator.GetMaxJpegSize(1024, 1024, 420));
+
+        Assert.Contains("zero worst-case JPEG size", exception.Message, StringComparison.Ordinal);
     }
 
     private static (byte B, byte G, byte R) Gradient(int x, int y) =>
