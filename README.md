@@ -16,13 +16,13 @@ dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 
 Available packages:
 
-| Runtime | Native package | Bundled asset |
-| --- | --- | --- |
-| Windows x64 | `TurboJpeg.Wrapper.Native.win-x64` | `runtimes/win-x64/native/turbojpeg.dll` |
-| Windows ARM64 | `TurboJpeg.Wrapper.Native.win-arm64` | `runtimes/win-arm64/native/turbojpeg.dll` |
-| Linux x64 | `TurboJpeg.Wrapper.Native.linux-x64` | `runtimes/linux-x64/native/libturbojpeg.so` |
-| Linux ARM64 | `TurboJpeg.Wrapper.Native.linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
-| macOS x64 and ARM64 | `TurboJpeg.Wrapper.Native.osx-universal` | `runtimes/osx/native/libturbojpeg.dylib` |
+| Runtime | Version / downloads | Native package | Bundled asset |
+| --- | --- | --- | --- |
+| Windows x64 | [![NuGet](https://img.shields.io/nuget/v/TurboJpeg.Wrapper.Native.win-x64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.win-x64) [![NuGet](https://img.shields.io/nuget/dt/TurboJpeg.Wrapper.Native.win-x64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.win-x64) | `TurboJpeg.Wrapper.Native.win-x64` | `runtimes/win-x64/native/turbojpeg.dll` |
+| Windows ARM64 | [![NuGet](https://img.shields.io/nuget/v/TurboJpeg.Wrapper.Native.win-arm64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.win-arm64) [![NuGet](https://img.shields.io/nuget/dt/TurboJpeg.Wrapper.Native.win-arm64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.win-arm64) | `TurboJpeg.Wrapper.Native.win-arm64` | `runtimes/win-arm64/native/turbojpeg.dll` |
+| Linux x64 | [![NuGet](https://img.shields.io/nuget/v/TurboJpeg.Wrapper.Native.linux-x64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.linux-x64) [![NuGet](https://img.shields.io/nuget/dt/TurboJpeg.Wrapper.Native.linux-x64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.linux-x64) | `TurboJpeg.Wrapper.Native.linux-x64` | `runtimes/linux-x64/native/libturbojpeg.so` |
+| Linux ARM64 | [![NuGet](https://img.shields.io/nuget/v/TurboJpeg.Wrapper.Native.linux-arm64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.linux-arm64) [![NuGet](https://img.shields.io/nuget/dt/TurboJpeg.Wrapper.Native.linux-arm64.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.linux-arm64) | `TurboJpeg.Wrapper.Native.linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
+| macOS x64 and ARM64 | [![NuGet](https://img.shields.io/nuget/v/TurboJpeg.Wrapper.Native.osx-universal.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.osx-universal) [![NuGet](https://img.shields.io/nuget/dt/TurboJpeg.Wrapper.Native.osx-universal.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper.Native.osx-universal) | `TurboJpeg.Wrapper.Native.osx-universal` | `runtimes/osx/native/libturbojpeg.dylib` |
 
 If the matching native package is missing, the first decode, encode, or native-handle creation throws `TurboJpegException` with the expected native library paths.
 
