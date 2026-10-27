@@ -24,7 +24,10 @@ public class EncodeBench
     [Benchmark(Baseline = true)]
     public byte[] EncodeTurboJpeg()
     {
-        return TurboJpeg.EncodeToJpeg(_bmp);
+        return TurboJpeg.EncodeToJpeg(_bmp, TurboJpegEncodeOptions.Default with
+        {
+            Quality = 90
+        });
     }
 
     [Benchmark]
