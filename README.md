@@ -29,7 +29,7 @@ If the matching native package is missing, the first decode, encode, or native-h
 ## Requirements
 
 - .NET 10 or later.
-- Windows x64/ARM64, Linux x64/ARM64, or macOS x64/ARM64. x86 is not supported.
+- Windows x64/ARM64, Linux x64/ARM64, or macOS x64/ARM64.
 - Bundled native library: libjpeg-turbo 3.2.0.
 - Linux: glibc 2.17 or later. musl/Alpine requires a musl libjpeg-turbo build supplied through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
 - macOS: 10.7 or later on x64, 11 or later on ARM64.
