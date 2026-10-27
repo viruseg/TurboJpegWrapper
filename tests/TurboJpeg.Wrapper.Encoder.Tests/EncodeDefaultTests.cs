@@ -1,6 +1,4 @@
 using TurboJpegWrapper;
-using DecoderOptions = TurboJpegWrapper.TurboJpegDecodeOptions;
-using DecoderBitDepth = TurboJpegWrapper.TurboJpegBmpBitDepth;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 

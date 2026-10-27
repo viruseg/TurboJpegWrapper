@@ -1,6 +1,4 @@
 using System.Buffers.Binary;
-using DecoderOptions = TurboJpegWrapper.TurboJpegDecodeOptions;
-using DecoderBitDepth = TurboJpegWrapper.TurboJpegBmpBitDepth;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -42,7 +40,7 @@ internal sealed class DecodedBmp
 
     internal static DecodedBmp Decode(byte[] jpeg) =>
         new(TurboJpeg.DecodeToBmp(
-            jpeg, new DecoderOptions { BmpBitDepth = DecoderBitDepth.Bpp24 }));
+            jpeg, new TurboJpegDecodeOptions { BmpBitDepth = TurboJpegBmpBitDepth.Bpp24 }));
 
     /// <summary>Returns the BGR pixel at top-down image coordinates.</summary>
     internal (byte B, byte G, byte R) GetPixel(int x, int y)
