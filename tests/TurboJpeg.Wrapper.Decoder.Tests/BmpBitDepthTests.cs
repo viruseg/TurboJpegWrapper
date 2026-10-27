@@ -2,8 +2,8 @@ using System.Buffers.Binary;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
-using TurboJpegWrapper.Decoder;
-using TurboJpegWrapper.Decoder.Internal.Bmp;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Decoder.Bmp;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 

@@ -1,7 +1,7 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
-using TurboJpegWrapper.Decoder;
+using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 

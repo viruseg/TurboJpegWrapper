@@ -1,5 +1,4 @@
-using TurboJpegWrapper.Encoder;
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
+using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -13,7 +12,7 @@ public sealed class StateIsolationTests
         using var reused = new TurboJpegEncoder();
 
         var defaultOutput = AssertMatchesFresh(reused, bmp, TurboJpegEncodeOptions.Default);
-        Assert.Equal(1, DecoderApi.GetImageInfo(defaultOutput).DensityX);
+        Assert.Equal(1, TurboJpeg.GetImageInfo(defaultOutput).DensityX);
 
         var rgb444 = new TurboJpegEncodeOptions
         {
@@ -27,7 +26,7 @@ public sealed class StateIsolationTests
             Density = new TurboJpegDensity(300, 300, TurboJpegDensityUnits.PixelsPerInch),
         };
         var densityOutput = AssertMatchesFresh(reused, bmp, density300);
-        Assert.Equal(300, DecoderApi.GetImageInfo(densityOutput).DensityX);
+        Assert.Equal(300, TurboJpeg.GetImageInfo(densityOutput).DensityX);
 
         AssertMatchesFresh(reused, bmp, new TurboJpegEncodeOptions { Progressive = true });
         AssertMatchesFresh(reused, bmp, new TurboJpegEncodeOptions { ArithmeticCoding = true });
@@ -37,7 +36,7 @@ public sealed class StateIsolationTests
         Assert.Equal(0xC3, JpegMarkers.FindSofMarker(losslessOutput));
 
         var finalOutput = AssertMatchesFresh(reused, bmp, TurboJpegEncodeOptions.Default);
-        var finalInfo = DecoderApi.GetImageInfo(finalOutput);
+        var finalInfo = TurboJpeg.GetImageInfo(finalOutput);
         Assert.Equal(1, finalInfo.DensityX);
         Assert.Equal(1, finalInfo.DensityY);
         Assert.Equal((int)TurboJpegDensityUnits.Unknown, (int)finalInfo.DensityUnits);

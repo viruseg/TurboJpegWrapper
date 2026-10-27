@@ -1,6 +1,6 @@
 using System.Globalization;
-using TurboJpegWrapper.Encoder;
-using TurboJpegWrapper.Encoder.Internal;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Encoder;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 

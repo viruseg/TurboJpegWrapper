@@ -1,5 +1,5 @@
-using TurboJpegWrapper.Decoder;
-using TurboJpegWrapper.Decoder.Internal.Pooling;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Decoder.Pooling;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 

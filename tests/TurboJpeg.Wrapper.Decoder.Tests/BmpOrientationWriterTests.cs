@@ -1,5 +1,5 @@
-using TurboJpegWrapper.Decoder.Internal.Bmp;
-using TurboJpegWrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Internal.Decoder.Bmp;
+using TurboJpegWrapper.Internal.Decoder.Exif;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 

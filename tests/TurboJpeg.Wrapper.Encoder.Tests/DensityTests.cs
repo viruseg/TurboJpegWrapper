@@ -1,5 +1,4 @@
-using TurboJpegWrapper.Encoder;
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
+using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -74,7 +73,7 @@ public sealed class DensityTests
         var bmp = BmpBuilder.Create24(8, 8, Gradient, ppmX: 3780, ppmY: 3780);
 
         var jpeg = Encode(bmp, new TurboJpegEncodeOptions { Lossless = true });
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal(LosslessSof, JpegMarkers.FindSofMarker(jpeg));
         Assert.Equal(1, info.DensityX);
@@ -88,7 +87,7 @@ public sealed class DensityTests
         var bmp = BmpBuilder.Create24(8, 8, Gradient, ppmX: 3780, ppmY: 3780);
 
         var jpeg = Encode(bmp, new TurboJpegEncodeOptions { Colorspace = TurboJpegColorspace.Rgb });
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal((int)TurboJpegColorspace.Rgb, (int)info.Colorspace);
         Assert.Equal(1, info.DensityX);
@@ -108,7 +107,7 @@ public sealed class DensityTests
                 Colorspace = TurboJpegColorspace.YCbCr,
                 Subsampling = TurboJpegSubsampling.Yuv444,
             });
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal(96, info.DensityX);
         Assert.Equal(96, info.DensityY);
@@ -127,7 +126,7 @@ public sealed class DensityTests
                 Colorspace = TurboJpegColorspace.Grayscale,
                 Density = Dpi300,
             });
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal((int)TurboJpegColorspace.Grayscale, (int)info.Colorspace);
         Assert.Equal(300, info.DensityX);
@@ -141,7 +140,7 @@ public sealed class DensityTests
         var bmp = BmpBuilder.Create24(8, 8, Gradient, ppmX: int.MaxValue, ppmY: int.MaxValue);
 
         var jpeg = Encode(bmp, TurboJpegEncodeOptions.Default);
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal(65535, info.DensityX);
         Assert.Equal(65535, info.DensityY);

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
-using TurboJpegWrapper.Encoder;
-using TurboJpegWrapper.Encoder.Internal.Pooling;
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Encoder.Pooling;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -42,7 +41,7 @@ public sealed class StaticApiTests
         var options = new TurboJpegEncodeOptions { Quality = 75 };
 
         var jpeg = TurboJpeg.EncodeToJpeg(bmp, options);
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal(35, info.Width);
         Assert.Equal(23, info.Height);
@@ -58,7 +57,7 @@ public sealed class StaticApiTests
         {
             try
             {
-                var info = DecoderApi.GetImageInfo(TurboJpeg.EncodeToJpeg(bmp));
+                var info = TurboJpeg.GetImageInfo(TurboJpeg.EncodeToJpeg(bmp));
                 if (info.Width != 35 || info.Height != 23)
                 {
                     failures.Add(
@@ -86,7 +85,7 @@ public sealed class StaticApiTests
         Assert.Throws<ArgumentException>(() => TurboJpeg.EncodeToJpeg(invalid));
 
         var jpeg = TurboJpeg.EncodeToJpeg(BmpBuilder.Create24(35, 23, Gradient));
-        Assert.Equal(35, DecoderApi.GetImageInfo(jpeg).Width);
+        Assert.Equal(35, TurboJpeg.GetImageInfo(jpeg).Width);
     }
 
     [Fact]
@@ -162,7 +161,7 @@ public sealed class StaticApiTests
         {
             Assert.False(rented.IsDisposed);
             var jpeg = rented.EncodeToJpeg(BmpBuilder.Create24(4, 3, Gradient));
-            Assert.Equal(4, DecoderApi.GetImageInfo(jpeg).Width);
+            Assert.Equal(4, TurboJpeg.GetImageInfo(jpeg).Width);
         }
         finally
         {

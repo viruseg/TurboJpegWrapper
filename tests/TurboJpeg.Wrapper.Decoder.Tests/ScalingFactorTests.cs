@@ -1,5 +1,5 @@
-using TurboJpegWrapper.Decoder;
-using TurboJpegWrapper.Decoder.Internal.Native;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Decoder.Native;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 

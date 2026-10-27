@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
-using TurboJpegWrapper.Encoder;
-using TurboJpegWrapper.Encoder.Internal.Bmp;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Encoder.Bmp;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
-using TurboJpegWrapper.Decoder;
-using TurboJpegWrapper.Decoder.Internal.Native;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Decoder.Native;
 using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Decoder.Tests;

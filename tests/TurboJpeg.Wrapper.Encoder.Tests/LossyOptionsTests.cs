@@ -1,5 +1,4 @@
-using TurboJpegWrapper.Encoder;
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
+using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -44,7 +43,7 @@ public sealed class LossyOptionsTests
 
         var jpeg = encoder.EncodeToJpeg(bmp, options);
         var maxSize = encoder.GetMaxJpegSize(bmp, options);
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
         var decoded = DecodedBmp.Decode(jpeg);
 
         Assert.True(
@@ -63,7 +62,7 @@ public sealed class LossyOptionsTests
         using var encoder = new TurboJpegEncoder();
 
         var jpeg = encoder.EncodeToJpeg(bmp, options);
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal((int)TurboJpegColorspace.Rgb, (int)info.Colorspace);
         Assert.Equal((int)TurboJpegSubsampling.Yuv444, (int)info.Subsampling);
@@ -97,7 +96,7 @@ public sealed class LossyOptionsTests
         using var encoder = new TurboJpegEncoder();
 
         var jpeg = encoder.EncodeToJpeg(bmp, options);
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal((int)TurboJpegColorspace.Rgb, (int)info.Colorspace);
         Assert.Equal((int)TurboJpegSubsampling.Yuv444, (int)info.Subsampling);
@@ -124,7 +123,7 @@ public sealed class LossyOptionsTests
 
         var jpeg = encoder.EncodeToJpeg(
             bmp, new TurboJpegEncodeOptions { Colorspace = TurboJpegColorspace.Grayscale });
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
         var decoded = DecodedBmp.Decode(jpeg);
 
         Assert.Equal((int)TurboJpegColorspace.Grayscale, (int)info.Colorspace);

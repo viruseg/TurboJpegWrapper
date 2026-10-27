@@ -1,4 +1,4 @@
-using TurboJpegWrapper.Encoder;
+using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -72,7 +72,8 @@ public sealed class EncodeOptionsTests
     [Theory]
     [InlineData(-2)]
     [InlineData(3)]
-    public void Colorspace_Undefined_Throws(int colorspace)
+    [InlineData(4)]
+    public void Colorspace_Unsupported_Throws(int colorspace)
     {
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
             new TurboJpegEncodeOptions { Colorspace = (TurboJpegColorspace)colorspace });

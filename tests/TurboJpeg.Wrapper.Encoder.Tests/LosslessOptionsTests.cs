@@ -1,5 +1,4 @@
-using TurboJpegWrapper.Encoder;
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
+using TurboJpegWrapper;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -203,7 +202,7 @@ public sealed class LosslessOptionsTests
         };
 
         var jpeg = Encode(bmp, options);
-        var info = DecoderApi.GetImageInfo(jpeg);
+        var info = TurboJpeg.GetImageInfo(jpeg);
 
         Assert.Equal(300, info.DensityX);
         Assert.Equal(300, info.DensityY);

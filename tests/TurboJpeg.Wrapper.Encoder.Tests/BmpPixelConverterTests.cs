@@ -1,5 +1,5 @@
-using TurboJpegWrapper.Encoder;
-using TurboJpegWrapper.Encoder.Internal.Bmp;
+using TurboJpegWrapper;
+using TurboJpegWrapper.Internal.Encoder.Bmp;
 using TurboJpegWrapper.Internal.Native;
 
 namespace TurboJpegWrapper.Encoder.Tests;

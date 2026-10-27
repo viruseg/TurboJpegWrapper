@@ -1,7 +1,6 @@
-using TurboJpegWrapper.Encoder;
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
-using DecoderOptions = TurboJpegWrapper.Decoder.TurboJpegDecodeOptions;
-using DecoderBitDepth = TurboJpegWrapper.Decoder.TurboJpegBmpBitDepth;
+using TurboJpegWrapper;
+using DecoderOptions = TurboJpegWrapper.TurboJpegDecodeOptions;
+using DecoderBitDepth = TurboJpegWrapper.TurboJpegBmpBitDepth;
 
 namespace TurboJpegWrapper.Encoder.Tests;
 
@@ -22,7 +21,7 @@ public sealed class EncodeDefaultTests
         var bmp = BmpBuilder.Create24(35, 23, Gradient);
         using var encoder = new TurboJpegEncoder();
 
-        var info = DecoderApi.GetImageInfo(encoder.EncodeToJpeg(bmp));
+        var info = TurboJpeg.GetImageInfo(encoder.EncodeToJpeg(bmp));
 
         Assert.Equal(35, info.Width);
         Assert.Equal(23, info.Height);
@@ -98,7 +97,7 @@ public sealed class EncodeDefaultTests
         var bmp = BmpBuilder.Create24(8, 8, Gradient, ppmX: 3780, ppmY: 3780);
         using var encoder = new TurboJpegEncoder();
 
-        var info = DecoderApi.GetImageInfo(encoder.EncodeToJpeg(bmp));
+        var info = TurboJpeg.GetImageInfo(encoder.EncodeToJpeg(bmp));
 
         Assert.Equal(96, info.DensityX);
         Assert.Equal(96, info.DensityY);

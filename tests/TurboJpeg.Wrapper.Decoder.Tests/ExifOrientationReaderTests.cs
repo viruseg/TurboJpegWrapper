@@ -1,5 +1,5 @@
 using System.Buffers.Binary;
-using TurboJpegWrapper.Decoder.Internal.Exif;
+using TurboJpegWrapper.Internal.Decoder.Exif;
 
 namespace TurboJpegWrapper.Decoder.Tests;
 
