@@ -8,6 +8,8 @@
 
 The managed package contains no native code. Add exactly one native package that matches the deployment runtime.
 
+> **Replacing `TurboJpeg.Wrapper.Decoder` and `TurboJpeg.Wrapper.Encoder`?** Those package IDs are replaced by `TurboJpeg.Wrapper`. Replace `using TurboJpegWrapper.Decoder;` and `using TurboJpegWrapper.Encoder;` with `using TurboJpegWrapper;`. The facade, exception types, and enums are now single types in that namespace, so the aliases the older packages required are unnecessary.
+
 > **Version `3.2.0-pre.2` is a prerelease.** All packages in this repository use that version. Pass `--prerelease` when installing from NuGet and pin exact versions for reproducible builds.
 
 ## Native packages
@@ -80,4 +82,4 @@ The managed package embeds its README. Native packages contain the native asset,
 
 The source code in this repository is licensed under the MIT License. See [LICENSE](LICENSE).
 
-The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md). Every managed package includes its README, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; native packages include `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md). The managed package includes its README, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; native packages include `LICENSE` and `THIRD-PARTY-NOTICES.md`.

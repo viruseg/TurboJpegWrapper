@@ -1,13 +1,13 @@
 namespace TurboJpegWrapper;
 
-/// <summary>Color spaces reported for a JPEG image by decoding and supported by the encoder.</summary>
+/// <summary>Color spaces used by TurboJPEG decoding and encoding.</summary>
 /// <remarks>
 /// Decoding never reports <see cref="Default"/>. Encoding accepts only <see cref="Default"/>,
 /// <see cref="Rgb"/>, <see cref="YCbCr"/>, and <see cref="Grayscale"/>.
 /// </remarks>
 public enum TurboJpegColorspace
 {
-    /// <summary>Use the color space implied by the input pixel format. Valid for encoding only.</summary>
+    /// <summary>Use the color space implied by the input pixel format. Encoding only; decoding never reports it.</summary>
     Default = -1,
 
     /// <summary>RGB color space.</summary>
@@ -19,14 +19,14 @@ public enum TurboJpegColorspace
     /// <summary>Grayscale color space.</summary>
     Grayscale = 2,
 
-    /// <summary>CMYK color space.</summary>
+    /// <summary>CMYK color space. Reported by decoding; rejected by encoding.</summary>
     Cmyk = 3,
 
-    /// <summary>YCCK color space.</summary>
+    /// <summary>YCCK color space. Reported by decoding; rejected by encoding.</summary>
     Ycck = 4
 }
 
-/// <summary>Chroma subsampling schemes reported by TurboJPEG for a JPEG image and supported by the encoder.</summary>
+/// <summary>Chroma subsampling schemes used by TurboJPEG decoding and encoding.</summary>
 public enum TurboJpegSubsampling
 {
     /// <summary>No subsampling scheme is selected; decoding reports this value when the scheme is unknown and encoding rejects it.</summary>

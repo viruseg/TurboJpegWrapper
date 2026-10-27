@@ -184,7 +184,7 @@ Managed scratch is checked before allocation. A 16-bit sample scratch requires `
 
 A JPEG whose precision is outside 2-16 bits is rejected with `TurboJpegUnsupportedException`.
 
-The wrapper does not perform ICC color management. Without `AutoOrient`, decoded dimensions are the stored JPEG dimensions; with `Crop`, they are the crop dimensions.
+Without `AutoOrient`, decoded dimensions are the stored JPEG dimensions; with `Crop`, they are the crop dimensions.
 
 With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segment is applied. All eight EXIF orientation values are supported, so the result may be rotated or mirrored. Missing, malformed, or out-of-range EXIF orientation is ignored and the image is decoded unchanged; malformed metadata never fails decoding. EXIF is read from the JPEG bytes before decoding, so no additional native metadata API is used.
 
@@ -331,7 +331,7 @@ Lossless and RGB outputs ignore the BMP density, so the same BMP can encode with
 - `ArgumentOutOfRangeException`: a negative crop offset, a non-positive crop dimension, an invalid BMP bit depth, or an option or density value outside its allowed range or not supported for the requested direction.
 - `TurboJpegUnsupportedException`: the image precision is outside 2-16 bits, or a valid BMP uses an encoding this library does not support.
 - `TurboJpegImageTooLargeException`: `MaxPixels` is exceeded, or the BMP, the worst-case JPEG size, or a conversion or scratch buffer would exceed `Array.MaxLength`.
-- `TurboJpegException`: a native TurboJPEG error, a native-library load failure, or a native warning while `StopOnWarning` is `true` for decoding.
+- `TurboJpegException`: a native TurboJPEG error, a native-library load failure, or a native warning while the direction's `StopOnWarning` option is `true`.
 - `ObjectDisposedException`: an instance method was called after `Dispose`.
 - `PlatformNotSupportedException`: the current OS/architecture has no known runtime identifier and no explicit native path is configured.
 
@@ -360,7 +360,7 @@ Otherwise the resolver tries, in order:
 3. `{library}` in `AppContext.BaseDirectory`.
 4. The operating system's normal library search.
 
-The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. x86 is not supported. To add a different runtime, place the matching library under `runtimes/{rid}/native/` and include it in a native package. The native library is loaded on the first decode, the first encode, or when an instance handle is created.
+The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. x86 is not supported. To add a different runtime, place the matching library under `runtimes/{rid}/native/` and include it in a native package. The native library is loaded on the first decode, the first encode, the first scaling-factor query, or when an instance handle is created.
 
 ## Threading and performance
 
