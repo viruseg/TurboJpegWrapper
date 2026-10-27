@@ -7,12 +7,14 @@ A .NET wrapper around the libjpeg-turbo TurboJPEG API. The managed package `Turb
 
 ## Installation
 
+Native libraries ship as separate packages for each supported runtime. Add the managed package and the native package for the deployment runtime; the example below uses Windows x64:
+
 ```bash
 dotnet add package TurboJpeg.Wrapper --prerelease
 dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 ```
 
-Replace `win-x64` with the package for the target runtime:
+Available packages:
 
 | Runtime | Native package | Bundled asset |
 | --- | --- | --- |
