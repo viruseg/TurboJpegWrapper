@@ -12,7 +12,7 @@
     <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TurboJpeg.Wrapper.Decoder\TurboJpeg.Wrapper.Decoder.csproj" />
+    <ProjectReference Include="..\..\src\TurboJpeg.Wrapper\TurboJpeg.Wrapper.csproj" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\native\TurboJpeg.Wrapper.Native.win-x64\TurboJpeg.Wrapper.Native.win-x64.csproj"
