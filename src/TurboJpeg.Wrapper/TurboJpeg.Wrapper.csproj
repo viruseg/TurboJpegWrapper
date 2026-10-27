@@ -9,7 +9,7 @@
     <IsTrimmable>true</IsTrimmable>
     <RootNamespace>TurboJpegWrapper</RootNamespace>
     <PackageId>TurboJpeg.Wrapper</PackageId>
-    <Description>Production-oriented .NET wrapper for the libjpeg-turbo TurboJPEG API: decode JPEG to BMP and encode BMP to JPEG. Native libraries are provided by separate per-platform packages.</Description>
+    <Description>.NET wrapper for the libjpeg-turbo TurboJPEG API: decode JPEG to BMP and encode BMP to JPEG. Native libraries are provided by separate per-platform packages.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>

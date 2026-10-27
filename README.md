@@ -1,16 +1,13 @@
 # TurboJpeg.Wrapper
 
-.NET 10 wrappers around libjpeg-turbo 3.2.0 and its TurboJPEG API. The repository provides one managed package and five shared native runtime packages:
+A .NET 10 wrapper around libjpeg-turbo 3.2.0 and its TurboJPEG API.
 
-| Managed package | Namespace | Purpose |
-| --- | --- | --- |
-| `TurboJpeg.Wrapper` | `TurboJpegWrapper` | Decodes 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK JPEG files to complete 8-, 24-, or 32-bit BMP files (scaling, cropping, EXIF auto-orientation), and encodes uncompressed 1- to 32-bit BMP files to JPEG with quality, subsampling, colorspace, lossless, progressive, arithmetic coding, restart markers, and density options. |
+The managed package `TurboJpeg.Wrapper` (namespace `TurboJpegWrapper`) contains no native code. Add exactly one native package for the deployment runtime.
 
-The managed package contains no native code. Add exactly one native package that matches the deployment runtime.
+- Decodes JPEG to complete 8-, 24-, or 32-bit BMP files: 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK input; scaling, cropping, EXIF auto-orientation.
+- Encodes uncompressed 1-, 4-, 8-, 16-, 24-, and 32-bit BMP files to JPEG: quality, subsampling, colorspace, lossless, progressive, arithmetic coding, restart markers, density.
 
-> **Replacing `TurboJpeg.Wrapper.Decoder` and `TurboJpeg.Wrapper.Encoder`?** Those package IDs are replaced by `TurboJpeg.Wrapper`. Replace `using TurboJpegWrapper.Decoder;` and `using TurboJpegWrapper.Encoder;` with `using TurboJpegWrapper;`. The facade, exception types, and enums are now single types in that namespace, so the aliases the older packages required are unnecessary.
-
-> **Version `3.2.0-pre.2` is a prerelease.** All packages in this repository use that version. Pass `--prerelease` when installing from NuGet and pin exact versions for reproducible builds.
+The full API contract is in the [package README](src/TurboJpeg.Wrapper/README.md).
 
 ## Native packages
 
@@ -22,7 +19,7 @@ The managed package contains no native code. Add exactly one native package that
 | Linux ARM64 | `TurboJpeg.Wrapper.Native.linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
 | macOS x64 and ARM64 | `TurboJpeg.Wrapper.Native.osx-universal` | `runtimes/osx/native/libturbojpeg.dylib` |
 
-The macOS package contains one universal binary for x86_64 and arm64. Linux assets are glibc builds; musl/Alpine requires a musl libjpeg-turbo build supplied through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
+The macOS package contains one universal binary for x86_64 and arm64.
 
 ## Installation
 
@@ -31,22 +28,20 @@ dotnet add package TurboJpeg.Wrapper --prerelease
 dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 ```
 
-Replace `win-x64` with the package for the target runtime from the table above.
-
-The package exposes a single `TurboJpeg` facade in the `TurboJpegWrapper` namespace, covering both decoding and encoding.
+Replace `win-x64` with the package for the target runtime from the table above. All packages are `3.2.0-pre.2` prereleases.
 
 ## Requirements
 
 - .NET 10 (`net10.0`).
 - Windows x64/ARM64, Linux x64/ARM64, or macOS x64/ARM64. x86 is not supported.
-- The bundled native library is libjpeg-turbo 3.2.0.
-- Linux binaries require glibc 2.17 or later and do not support musl/Alpine. Supply a musl build through `TURBOJPEG_NATIVE_LIBRARY_PATH` when targeting Alpine.
-- macOS requires 10.7 or later on x64 and 11 or later on ARM64. The `osx-universal` package serves both architectures.
+- Bundled native library: libjpeg-turbo 3.2.0.
+- Linux: glibc 2.17 or later. musl/Alpine requires a musl libjpeg-turbo build supplied through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
+- macOS: 10.7 or later on x64, 11 or later on ARM64.
 - If the matching native package is missing, the first operation throws `TurboJpegException` with the expected native library paths.
 
 ## Benchmarks
 
-`Ratio` and `Alloc Ratio` are relative to TurboJpeg.
+`Ratio` and `Alloc Ratio` are relative to the TurboJpeg row.
 
 ### Encoding
 
@@ -72,14 +67,10 @@ GDI+ and ImageSharp do not expose the same chroma-subsampling and TurboJPEG-spec
 
 The harnesses are in [bench/TurboJpeg.Wrapper.Encoder.Benchmark](bench/TurboJpeg.Wrapper.Encoder.Benchmark) and [bench/TurboJpeg.Wrapper.Decoder.Benchmark](bench/TurboJpeg.Wrapper.Decoder.Benchmark).
 
-## Package documentation
-
-- [TurboJpeg.Wrapper README](src/TurboJpeg.Wrapper/README.md)
-
-The managed package embeds its README. Native packages contain the native asset, `LICENSE`, and `THIRD-PARTY-NOTICES.md` only.
-
 ## License and third-party notices
 
-The source code in this repository is licensed under the MIT License. See [LICENSE](LICENSE).
+The source code is licensed under the MIT License. See [LICENSE](LICENSE).
 
-The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license and the Independent JPEG Group / zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md). The managed package includes its README, `LICENSE`, and `THIRD-PARTY-NOTICES.md`; native packages include `LICENSE` and `THIRD-PARTY-NOTICES.md`.
+The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license with the Independent JPEG Group and zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md).
+
+The managed package contains its README, `LICENSE`, and `THIRD-PARTY-NOTICES.md`. Native packages contain the native asset, `LICENSE`, and `THIRD-PARTY-NOTICES.md`.

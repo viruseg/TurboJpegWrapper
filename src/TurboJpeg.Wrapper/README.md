@@ -2,25 +2,26 @@
 
 Version `3.2.0-pre.2` (prerelease)
 
-A production-oriented .NET 10 wrapper around the libjpeg-turbo 3.2.0 TurboJPEG API. The package decodes JPEG images to complete 8-, 24-, or 32-bit BMP files and encodes uncompressed BMP images to JPEG.
+A .NET 10 wrapper around the libjpeg-turbo 3.2.0 TurboJPEG API. It decodes JPEG images to complete 8-, 24-, or 32-bit BMP files and encodes uncompressed BMP images to JPEG.
 
-All public types live in the `TurboJpegWrapper` namespace. The `TurboJpeg` static facade covers both directions; `TurboJpegDecoder` and `TurboJpegEncoder` provide single-handle instances. The managed assembly contains no native code; add exactly one native package that matches the deployment runtime.
+All public types are in the `TurboJpegWrapper` namespace. `TurboJpeg` is a static facade; `TurboJpegDecoder` and `TurboJpegEncoder` are single-handle instances. The managed assembly contains no native code; add exactly one native package for the deployment runtime.
 
 ## Requirements
 
-- Package version `3.2.0-pre.2` (prerelease).
 - .NET 10 (`net10.0`).
-- The managed package plus exactly one native package for the target runtime. The native packages bundle libjpeg-turbo 3.2.0 for Windows x64/ARM64, Linux x64/ARM64, and macOS x64/ARM64. Linux binaries require glibc 2.17+ and do not support musl/Alpine; macOS requires 10.7+ on x64 and 11+ on ARM64.
+- One native package matching the target runtime. Native packages bundle libjpeg-turbo 3.2.0 for Windows x64/ARM64, Linux x64/ARM64, and macOS x64/ARM64.
+- Linux: glibc 2.17 or later. musl/Alpine requires a musl libjpeg-turbo build supplied through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
+- macOS: 10.7 or later on x64, 11 or later on ARM64.
 - x86 is not supported.
 
 ## Installation
-
-The managed package contains no native code. Add it together with exactly one native package that matches the deployment runtime:
 
 ```bash
 dotnet add package TurboJpeg.Wrapper --prerelease
 dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 ```
+
+Replace `win-x64` with the package for the target runtime.
 
 | Runtime | Native package |
 | --- | --- |
@@ -29,8 +30,6 @@ dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 | `linux-x64` | `TurboJpeg.Wrapper.Native.linux-x64` |
 | `linux-arm64` | `TurboJpeg.Wrapper.Native.linux-arm64` |
 | `osx-x64`, `osx-arm64` | `TurboJpeg.Wrapper.Native.osx-universal` |
-
-Packages are published as `3.2.0-pre.2` prereleases, so `--prerelease` is required. The package and assembly names are `TurboJpeg.Wrapper`; the C# namespace is `TurboJpegWrapper`.
 
 If the matching native package is missing, the first decode, encode, or native-handle creation throws `TurboJpegException` with the expected native library paths.
 
@@ -51,11 +50,11 @@ Decoding returns a complete BMP file, not raw pixels. Encoding accepts a complet
 
 ## Decoding
 
-The decoder handles 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK JPEGs, including lossy, lossless, progressive, and arithmetic-coded images with every chroma subsampling scheme TurboJPEG reports. BMP samples are always 8 bits per channel. Where TurboJPEG supports the requested conversion, it writes grayscale, BGR, or BGRA pixels directly into the final BMP allocation; the lossless RGB to `Bpp8` and lossless GRAY to `Bpp24`/`Bpp32` fallbacks use managed scratch buffers. On the direct path, EXIF mirror and 180-degree orientations avoid a full decoded-size buffer; only the four axis-swapping orientations need one.
+The decoder handles 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK JPEGs: lossy, lossless, progressive, and arithmetic-coded images with any chroma subsampling scheme TurboJPEG reports. BMP samples are always 8 bits per channel.
 
 ### Static facade
 
-`TurboJpeg` is thread-safe and rents decoders from an internal pool.
+`TurboJpeg` is thread-safe.
 
 ```csharp
 byte[] bmp = TurboJpeg.DecodeToBmp(jpeg);
@@ -71,11 +70,11 @@ byte[] buffer = new byte[size];
 int written = TurboJpeg.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer);
 ```
 
-`GetBmpSize` performs the same header, EXIF, scaling, crop, and limit validation as decoding, so the destination buffer can be sized exactly. The span overloads return the number of bytes written and avoid allocating a new BMP array per call; pool and reuse the buffer when decoding many images. The destination must not overlap the JPEG source, because the decoder reads the JPEG while writing BMP bytes; an overlapping destination throws `ArgumentException`.
+`GetBmpSize` performs the same validation as decoding and returns the exact BMP size. The span overload returns the number of bytes written; the destination must not overlap the JPEG source, and overlap throws `ArgumentException`.
 
 ### Instance decoder
 
-Use an instance when you want to keep one native handle on a thread. Instances are not thread-safe.
+Use an instance to keep one native handle on a thread. Instances are not thread-safe.
 
 ```csharp
 using var decoder = new TurboJpegDecoder();
@@ -89,112 +88,79 @@ int written = decoder.DecodeToBmp(jpeg, TurboJpegDecodeOptions.Default, buffer);
 
 All decode and size methods throw `ObjectDisposedException` after the decoder is disposed.
 
-If a JPEG header parse fails, the decoder recreates its native handle. If recreation fails,
-the decoder becomes disposed and the original exception is rethrown.
-
 ### Options
 
-`TurboJpegDecodeOptions` is an immutable record; use `with` to derive modified options, for example
-`TurboJpegDecodeOptions.Default with { AutoOrient = true }`. All limits are disabled by `0`.
+`TurboJpegDecodeOptions` is an immutable record; use `with` to derive modified options, for example `TurboJpegDecodeOptions.Default with { AutoOrient = true }`. All limits are disabled by `0`.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `ScalingFactor` | `1/1` | Output scaling. Every factor returned by `GetSupportedScalingFactors()` is accepted, including upscaling factors such as `2/1`. Unsupported factors throw `ArgumentException`. Lossless JPEG requires `1/1`. |
+| `ScalingFactor` | `1/1` | Output scaling. Accepts every factor returned by `GetSupportedScalingFactors()`, including upscaling factors such as `2/1`. Unsupported factors throw `ArgumentException`. Lossless JPEG requires `1/1`. |
 | `Crop` | `null` | Region of the scaled stored image to decode. See [Cropping](#cropping). |
 | `FastDct` | `false` | Uses the fastest DCT/IDCT algorithm. |
 | `FastUpsampling` | `false` | Uses the fastest chroma upsampling algorithm. |
 | `MaxPixels` | `100_000_000` | Maximum number of source pixels; `0` means no limit. |
-| `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations surface as `TurboJpegException`. |
+| `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations throw `TurboJpegException`. Managed buffers are not counted. |
 | `ScanLimit` | `500` | Maximum number of progressive scans; `0` means no limit. |
 | `BmpBitDepth` | `Bpp32` | BMP output depth: `Bpp8` (grayscale plus 256-entry palette), `Bpp24` (BGR), or `Bpp32` (BGRA). |
 | `AutoOrient` | `false` | Applies the EXIF orientation stored in the JPEG, so the BMP is upright. Orientations that swap the axes also transpose the BMP width and height. |
 | `StopOnWarning` | `true` | Treats a native warning as an error. See [Warnings](#warnings). |
 
-`MaxPixels` and the maximum array length are checked before the BMP buffer is allocated. A smaller scaling factor does not relax the source-pixel limit.
-
 ### Cropping
 
-`TurboJpegDecodeOptions.Crop` decodes a rectangular region instead of the full image. Coordinates refer to the scaled, stored image, not to the auto-oriented output:
+`TurboJpegDecodeOptions.Crop` decodes a rectangular region instead of the full image. Coordinates refer to the scaled, stored image: scaling is applied first, then the crop, then `AutoOrient`.
 
-- `ScalingFactor` is applied first, then the crop region is applied to the scaled image.
-- `AutoOrient` transforms the cropped pixels afterward. Orientations 5-8 swap the BMP width and height of the crop.
-- `X` must be divisible by the scaled iMCU width; `Y` is not required to be iMCU-aligned.
-- The region must fit inside the scaled image and must have a positive width and height.
-- Cropping is supported only for lossy JPEGs with a known chroma subsampling scheme.
+- `X` must be divisible by the scaled iMCU width: 8 for 4:4:4, 4:4:0, 4:4:1, and grayscale; 16 for 4:2:2, 4:2:0, and 2x4; 32 for 4:1:1 and 4:1:0. `Y` does not need to be aligned.
+- The region must fit inside the scaled image and have positive width and height.
+- Only lossy JPEGs with a known chroma subsampling scheme can be cropped.
 
-The native iMCU width is 8 for 4:4:4, 4:4:0, 4:4:1, and grayscale; 16 for 4:2:2, 4:2:0, and 2x4; and 32 for 4:1:1 and 4:1:0. The scaled iMCU width is `ceil(native iMCU width * scaling numerator / scaling denominator)`.
-
-Invalid crops throw `ArgumentException`: a region outside the scaled image, a horizontally misaligned region, a lossless JPEG, or an unknown subsampling scheme. `GetBmpSize` returns the cropped BMP size.
+Orientations 5-8 transpose the crop width and height. `GetBmpSize` returns the cropped BMP size. Invalid crops throw `ArgumentException`.
 
 ### Precision and CMYK
 
-BMP output always uses 8-bit channels. JPEG precision 2-16 is accepted:
+BMP output always uses 8-bit channels. JPEG precision 2-16 is accepted; precisions 2-7, 9-11, and 13-15 are mapped exactly to 8 bits, and 12- and 16-bit output is within 1 LSB of exact rounding.
 
-- Precision 8 samples pass through unchanged.
-- Precisions 2-7, 9-11, and 13-15 use exact lookup tables that map the native sample range to 0-255.
-- Precisions 12 and 16 use SIMD narrowing. The result is within 1 LSB of exact rounding for every sample.
+Lossless RGB to `Bpp8` is converted to luma. Lossless GRAY to `Bpp24` or `Bpp32` is expanded to `B = G = R` with alpha 255. Both work at every precision and with `AutoOrient`.
 
-TurboJPEG cannot convert some lossless colorspaces directly, so the wrapper provides two managed fallbacks:
+CMYK and YCCK are decoded as four channels and converted best-effort to BGR, BGRA, or luma. Stored samples are treated as inverted Adobe CMYK regardless of the Adobe APP14 marker, so a producer that stores non-inverted CMYK renders with inverted colors. `Bpp8` output is the luma of the converted BGR values.
 
-- Lossless RGB to `Bpp8`: the image is decoded as BGR, downconverted to 8 bits, and converted to luma with `(77 R + 150 G + 29 B + 128) >> 8`.
-- Lossless GRAY to `Bpp24` or `Bpp32`: the image is decoded as GRAY, downconverted, and expanded to `B = G = R = sample` with alpha 255.
-
-Both fallbacks work at every precision from 2 to 16 and with `AutoOrient`.
-
-CMYK and YCCK are decoded as four-channel CMYK and converted best-effort to BGR, BGRA, or luma. Stored samples are always treated as inverted Adobe CMYK, regardless of the Adobe APP14 marker: `R = round(C * K / 255)`, `G = round(M * K / 255)`, and `B = round(Y * K / 255)`, where `C`, `M`, `Y`, and `K` are the stored samples. A non-Adobe producer that stores non-inverted CMYK will render with inverted colors. `Bpp8` output is the luma of the converted BGR values.
-
-The wrapper does not perform ICC color management. CMYK-to-RGB is arithmetic best-effort conversion, not colorimetric conversion.
+The wrapper does not perform ICC color management.
 
 ### Warnings
 
-Truncated entropy data and extraneous bytes can make TurboJPEG report a warning instead of a fatal error.
+Truncated entropy data and extraneous bytes can produce a native warning instead of a fatal error.
 
-- With the default `StopOnWarning = true`, a warning is reported as a non-fatal `TurboJpegException` (`IsFatal = false`) and no BMP is returned.
-- With `StopOnWarning = false`, native warnings are ignored and a best-effort BMP is returned. The native destination is zero-filled before decoding, so bytes the decoder does not write are deterministic zeros instead of stale pool or caller memory.
-- Fatal errors throw in both modes.
+- With `StopOnWarning = true` (default), a native warning throws a non-fatal `TurboJpegException` (`IsFatal = false`) and no BMP is returned.
+- With `StopOnWarning = false`, warnings are ignored and a best-effort BMP is returned.
 - `GetImageInfo` always treats warnings as errors.
-
-### Memory
-
-`MaxMemoryMegabytes` limits native TurboJPEG allocations only. The returned BMP, the EXIF auto-orient scratch buffer, and the precision and CMYK conversion scratch buffers are managed and are not counted against it.
-
-Managed scratch is checked before allocation. A 16-bit sample scratch requires `2 * samples` bytes, and byte scratch requires 1, 3, or 4 bytes per pixel depending on the pipeline. If the BMP or any scratch buffer would exceed `Array.MaxLength`, the call throws `TurboJpegImageTooLargeException` before allocating it.
 
 ### BMP output
 
 - Complete BMP file with a 54-byte `BITMAPINFOHEADER`; 8-bit output adds a 1024-byte palette.
-- 8 bits per pixel: one grayscale byte per pixel with a 256-entry grayscale palette. Color is discarded, so the result is always grayscale.
-- 24 bits per pixel: BGR byte order.
-- 32 bits per pixel: BGRA byte order with alpha always 255.
-- Bottom-up rows (`biHeight` is positive), `BI_RGB` compression.
-- Rows are padded to a 4-byte boundary: `stride = (width * bytesPerPixel + 3) & ~3`. Padding bytes are zero; 32-bit rows need no padding.
-- Pixel data starts at 54 bytes for 24/32 bpp and at 1078 bytes for 8 bpp.
-- `biSizeImage` is `stride * height`; the file size is `pixelOffset + stride * height`.
-- `biXPelsPerMeter` and `biYPelsPerMeter` are derived from the JFIF density when the JPEG stores it in dots per inch or dots per centimeter; otherwise they default to 2835 (72 DPI). `TurboJpegImageInfo` exposes the raw `DensityX`, `DensityY`, and `DensityUnits` values.
-- With `AutoOrient`, the header describes the upright image; orientations 5-8 transpose the width and height.
-- With `Crop`, the header describes the cropped image; orientations 5-8 transpose the crop dimensions.
+- `Bpp8`: grayscale with a 256-entry palette; color is discarded. `Bpp24`: BGR. `Bpp32`: BGRA with alpha 255.
+- Bottom-up rows (`biHeight` is positive), `BI_RGB` compression, rows padded to 4 bytes with zeros.
+- Pixel data starts at 54 bytes (24/32 bpp) or 1078 bytes (8 bpp); `biSizeImage` is `stride * height`.
+- `biXPelsPerMeter` and `biYPelsPerMeter` are derived from the JFIF density when present, otherwise 2835 (72 DPI). `TurboJpegImageInfo` exposes `DensityX`, `DensityY`, and `DensityUnits`.
+- With `AutoOrient` or `Crop`, the header describes the resulting image; with `AutoOrient`, orientations 5-8 transpose width and height.
 
 ### Supported inputs
 
-- JPEG precision from 2 to 16 bits, including 12-bit lossy extended sequential.
-- RGB, YCbCr, grayscale, CMYK, and YCCK color spaces.
+- JPEG precision 2-16, including 12-bit lossy extended sequential.
+- RGB, YCbCr, grayscale, CMYK, and YCCK.
 - Baseline, extended sequential, progressive, arithmetic, and lossless entropy coding.
-- Any chroma subsampling scheme reported by TurboJPEG; cropping requires a known scheme.
+- Any chroma subsampling scheme TurboJPEG reports; cropping requires a known scheme.
 - Lossless JPEG at `1/1` scaling.
 
-A JPEG whose precision is outside 2-16 bits is rejected with `TurboJpegUnsupportedException`.
+A precision outside 2-16 throws `TurboJpegUnsupportedException`.
 
-Without `AutoOrient`, decoded dimensions are the stored JPEG dimensions; with `Crop`, they are the crop dimensions.
-
-With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segment is applied. All eight EXIF orientation values are supported, so the result may be rotated or mirrored. Missing, malformed, or out-of-range EXIF orientation is ignored and the image is decoded unchanged; malformed metadata never fails decoding. EXIF is read from the JPEG bytes before decoding, so no additional native metadata API is used.
+Without `AutoOrient`, decoded dimensions are the stored JPEG dimensions; with `Crop`, the crop dimensions. With `AutoOrient`, the orientation tag (`0x0112`) from the first EXIF APP1 segment is applied; all eight values are supported, so the result may be rotated or mirrored. Missing, malformed, or out-of-range orientation is ignored, and malformed metadata never fails decoding.
 
 ## Encoding
 
-The encoder turns uncompressed 1-, 4-, 8-, 16-, 24-, and 32-bit BMP files into JPEG, with quality, chroma subsampling, colorspace, lossless, progressive, arithmetic coding, restart markers, and density options. 24-bit and 32-bit uncompressed BMP layouts pass to TurboJPEG without a managed pixel copy.
+The encoder turns uncompressed 1-, 4-, 8-, 16-, 24-, and 32-bit BMP files into JPEG.
 
 ### Static facade
 
-`TurboJpeg` is thread-safe. Each call rents an encoder from an internal pool and returns it when the call completes.
+`TurboJpeg` is thread-safe.
 
 ```csharp
 byte[] jpeg = TurboJpeg.EncodeToJpeg(bmp);
@@ -208,13 +174,11 @@ int written = TurboJpeg.EncodeToJpeg(bmp, TurboJpegEncodeOptions.Default, buffer
 File.WriteAllBytes("photo.jpg", buffer[..written]);
 ```
 
-`GetMaxJpegSize` parses and validates the BMP and returns the worst-case JPEG size that TurboJPEG can produce for the image and effective subsampling. It uses the same validation as encoding and is the correct way to size a destination buffer; the actual JPEG is usually smaller.
-
-The span overload requires `destination.Length` to be at least `GetMaxJpegSize` and throws `ArgumentException` otherwise. It writes the JPEG directly into the caller's buffer and returns the number of bytes written. The required destination length is the worst-case maximum, not the final encoded length. The destination must not overlap the BMP source; the zero-copy pixel path may read the source while the native encoder writes JPEG bytes, so an overlapping destination is rejected with `ArgumentException`.
+`GetMaxJpegSize` validates the BMP and returns the worst-case JPEG size for the image and effective subsampling; the actual JPEG is usually smaller. The span overload requires a destination of at least that size, writes the JPEG into it, and returns the number of bytes written. The destination must not overlap the BMP source; overlap throws `ArgumentException`.
 
 ### Instance encoder
 
-Use an instance when you want to keep one native handle on a thread. `TurboJpegEncoder` accepts optional default options for the parameterless overloads. Instances are not thread-safe.
+Use an instance to keep one native handle on a thread. Optional default options apply to the parameterless overloads; explicit options replace them for that call. Instances are not thread-safe.
 
 ```csharp
 using var encoder = new TurboJpegEncoder();
@@ -232,9 +196,7 @@ byte[] buffer = new byte[maxSize];
 int written = encoder.EncodeToJpeg(bmp, TurboJpegEncodeOptions.Default, buffer);
 ```
 
-Explicit options replace the instance defaults for that call. After `Dispose`, all instance methods throw `ObjectDisposedException`.
-
-If a native encode fails, the instance recreates its native handle so it remains usable. Recovery is best-effort: if recreation also fails, the instance becomes disposed and the original exception is rethrown.
+All methods throw `ObjectDisposedException` after `Dispose`.
 
 ### Options
 
@@ -243,101 +205,81 @@ If a native encode fails, the instance recreates its native handle so it remains
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `Quality` | `90` | JPEG quality from 1 (lowest) to 100 (highest). Ignored when `Lossless` is `true`. |
-| `Subsampling` | `Yuv420` | Chroma subsampling: `Yuv444`, `Yuv422`, `Yuv420`, `Grayscale`, `Yuv440`, `Yuv411`, `Yuv441`, `Yuv410`, or `Yuv24`. `Unknown` is invalid. Ignored when `Lossless` is `true` or `Colorspace` is `Rgb`; RGB output always uses 4:4:4. An explicit RGB colorspace takes precedence over `Subsampling = Grayscale`. |
-| `Colorspace` | `Default` | `Default` resolves to `YCbCr` for colour input; `Rgb`, `YCbCr`, and `Grayscale` can be requested explicitly. `Cmyk` and `Ycck` are decoding-only colorspaces and are rejected for encoding. `Rgb` output always uses 4:4:4 regardless of `Subsampling`. `Grayscale`, or `Subsampling = Grayscale` when `Colorspace` is not explicitly `Rgb`, produces grayscale output; explicit `Rgb` wins. Ignored when `Lossless` is `true`. |
+| `Subsampling` | `Yuv420` | `Yuv444`, `Yuv422`, `Yuv420`, `Grayscale`, `Yuv440`, `Yuv411`, `Yuv441`, `Yuv410`, or `Yuv24`; `Unknown` is invalid. Ignored when `Lossless` is `true` or `Colorspace` is `Rgb`. `Colorspace = Grayscale` or `Subsampling = Grayscale` produces grayscale output unless `Colorspace` is explicitly `Rgb`. |
+| `Colorspace` | `Default` | `Default` resolves to `YCbCr` for color input; `Rgb`, `YCbCr`, and `Grayscale` can be requested. `Cmyk` and `Ycck` are decoding-only and rejected. `Rgb` forces 4:4:4. Ignored when `Lossless` is `true`. |
 | `FastDct` | `false` | Uses the fastest DCT/IDCT algorithm. Ignored when `Lossless` is `true`. |
-| `OptimizeCoding` | `false` | Generates optimal Huffman coding tables. Ignored when `Lossless` is `true`. |
+| `OptimizeCoding` | `false` | Generates optimal Huffman tables. Ignored when `Lossless` is `true`. |
 | `Progressive` | `false` | Produces a progressive JPEG. Ignored when `Lossless` is `true`. |
 | `ArithmeticCoding` | `false` | Uses arithmetic entropy coding. Ignored when `Lossless` is `true`. |
-| `Lossless` | `false` | Enables lossless JPEG compression. Only `LosslessPredictor`, `LosslessPointTransform`, `RestartRows`, `MaxMemoryMegabytes`, and `StopOnWarning` apply; the lossy options are ignored. A non-zero `RestartBlocks` is rejected, and `Density` must be `null`. |
-| `LosslessPredictor` | `1` | Lossless predictor selector from 1 through 7. Applies only when `Lossless` is `true`. |
-| `LosslessPointTransform` | `0` | Lossless point transform from 0 through 7. Applies only when `Lossless` is `true`. A value greater than zero right-shifts the samples, so the encoded image is no longer bit-exact. |
-| `RestartBlocks` | `0` | Number of MCUs between restart markers, from 0 through 65535; `0` disables restart markers. Applies only to lossy compression. Must be `0` with `Lossless`, and cannot be combined with a non-zero `RestartRows`. |
-| `RestartRows` | `0` | Number of MCU rows between restart markers, from 0 through 65535; `0` disables restart markers. Applies to lossy and lossless compression and cannot be combined with a non-zero `RestartBlocks`. |
-| `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations surface as `TurboJpegException`. |
+| `Lossless` | `false` | Enables lossless JPEG compression. Only `LosslessPredictor`, `LosslessPointTransform`, `RestartRows`, `MaxMemoryMegabytes`, and `StopOnWarning` apply. A non-zero `RestartBlocks` is rejected, and `Density` must be `null`. |
+| `LosslessPredictor` | `1` | Lossless predictor from 1 through 7. Lossless only. |
+| `LosslessPointTransform` | `0` | Lossless point transform from 0 through 7. Lossless only. A value above 0 right-shifts the samples, so the output is not bit-exact. |
+| `RestartBlocks` | `0` | MCUs between restart markers, 0-65535; `0` disables them. Lossy only; must be `0` with `Lossless`, and cannot be combined with a non-zero `RestartRows`. |
+| `RestartRows` | `0` | MCU rows between restart markers, 0-65535; `0` disables them. Lossy and lossless; cannot be combined with a non-zero `RestartBlocks`. |
+| `MaxMemoryMegabytes` | `0` | Maximum native intermediate memory in megabytes; `0` means no limit. Violations throw `TurboJpegException`. |
 | `StopOnWarning` | `false` | Treats a TurboJPEG warning as an encoding failure instead of continuing. |
-| `Density` | `null` | Pixel density written to the JPEG header. `null` derives the density from the BMP as described below. Applies only to lossy YCbCr and grayscale output; explicit density is rejected with lossless or RGB output. |
+| `Density` | `null` | Pixel density written to the JPEG header. `null` derives the density from the BMP as described in [Density](#density). Lossy YCbCr and grayscale output only; rejected with lossless or RGB output. |
 
-Range and enum validation runs when a value is assigned, including values that `Lossless` later ignores. For example, `Quality = 0` throws even when `Lossless = true`.
+Range and enum validation runs when a value is assigned, including values that `Lossless` later ignores. Cross-property validation runs when encoding or sizing starts: `RestartBlocks` and `RestartRows` cannot both be non-zero, `RestartBlocks` must be zero with `Lossless = true`, and `Density` requires lossy YCbCr or grayscale output. Violations throw `ArgumentException` with parameter name `options`.
 
-Cross-property validation runs when encoding or sizing starts: `RestartBlocks` and `RestartRows` cannot both be non-zero, `RestartBlocks` must be zero with `Lossless = true`, and `Density` cannot be specified with `Lossless = true` or `Colorspace = Rgb`. All violations throw `ArgumentException` with parameter name `options`.
-
-RGB output is never subsampled: `Colorspace = Rgb` forces 4:4:4 and ignores `Subsampling`. Combinations that depend on other libjpeg-turbo semantics are rejected by the native library and surface as `TurboJpegException`.
+`Colorspace = Rgb` forces 4:4:4 and ignores `Subsampling`. Other invalid combinations are rejected by libjpeg-turbo and surface as `TurboJpegException`.
 
 ### BMP input support
 
-The encoder accepts complete BMP files with DIB header sizes 40, 52, 56, 108, or 124, in bottom-up form (positive height) or top-down form (negative height). Supported bit counts are 1, 4, 8, 16, 24, and 32.
+The encoder accepts complete BMP files with DIB header sizes 40, 52, 56, 108, and 124, bottom-up (positive height) or top-down (negative height), with 1, 4, 8, 16, 24, or 32 bits per pixel.
 
-| BMP layout | Handling | Path |
-| --- | --- | --- |
-| 24-bit `BI_RGB` | Passed to TurboJPEG as BGR | Zero-copy |
-| 32-bit `BI_RGB` | Passed to TurboJPEG as BGRX; the fourth byte is ignored | Zero-copy |
-| 32-bit `BI_BITFIELDS` with masks `00FF0000`/`0000FF00`/`000000FF` | Passed to TurboJPEG as BGRX; alpha is ignored | Zero-copy |
-| 8-bit `BI_RGB` with a full 256-entry identity grayscale palette and grayscale output requested | Palette indices used directly as gray samples | Zero-copy |
-| 8-bit grayscale palette with grayscale output requested | Palette lookup to 8-bit gray | Pooled conversion |
-| 8-bit colour palette, or grayscale output not requested | Palette lookup to BGR | Pooled conversion |
-| 1- or 4-bit grayscale palette with grayscale output requested | Expand to 8-bit gray | Pooled conversion |
-| 1- or 4-bit palette otherwise | Expand to BGR | Pooled conversion |
-| 16-bit `BI_RGB` (X1R5G5B5) or `BI_BITFIELDS` (including RGB565) | Extract and scale channels to BGR | Pooled conversion |
-| 32-bit `BI_BITFIELDS` with other masks | Extract and scale channels to BGR; alpha is ignored | Pooled conversion |
+| BMP layout | Handling |
+| --- | --- |
+| 24-bit `BI_RGB` | BGR |
+| 32-bit `BI_RGB` | BGRX; the fourth byte is ignored |
+| 32-bit `BI_BITFIELDS` with masks `00FF0000`/`0000FF00`/`000000FF` | BGRX; alpha is ignored |
+| 8-bit `BI_RGB` with a full 256-entry identity grayscale palette and grayscale output requested | Palette indices used as gray samples |
+| 8-bit grayscale palette with grayscale output requested | Palette lookup to 8-bit gray |
+| 8-bit color palette, or grayscale output not requested | Palette lookup to BGR |
+| 1- or 4-bit grayscale palette with grayscale output requested | Expanded to 8-bit gray |
+| 1- or 4-bit palette otherwise | Expanded to BGR |
+| 16-bit `BI_RGB` (X1R5G5B5) or `BI_BITFIELDS` (including RGB565) | Scaled to BGR |
+| 32-bit `BI_BITFIELDS` with other masks | Scaled to BGR; alpha is ignored |
 
-"Grayscale output requested" means `Colorspace = Grayscale`, or `Subsampling = Grayscale` when `Colorspace` is not explicitly `Rgb` (explicit `Rgb` wins and forces 4:4:4), and it applies only to lossy encoding. Lossless mode ignores both options and does not subsample or convert colour to grayscale. In lossy mode, colour palettes always expand to BGR even when grayscale output is requested; native TurboJPEG performs the colour-to-gray conversion.
+"Grayscale output requested" means `Colorspace = Grayscale`, or `Subsampling = Grayscale` when `Colorspace` is not explicitly `Rgb`. Explicit `Rgb` wins and forces 4:4:4. It applies only to lossy encoding; lossless mode does not convert color to grayscale.
 
-Palette images use `clrUsed` entries when it is non-zero, otherwise `1 << bitCount` entries. Palette indices beyond the declared entries are treated as black. Alpha and colour management are not applied.
+Palette images use `clrUsed` entries when non-zero, otherwise `1 << bitCount` entries. Indices beyond the declared entries are treated as black. Alpha and color management are not applied.
 
 The following BMP variants are rejected:
 
-- OS/2 core bitmaps (DIB header size 12) and any DIB header size other than 40, 52, 56, 108, or 124, with `TurboJpegUnsupportedException`.
-- RLE4- or RLE8-compressed bitmaps, `BI_JPEG`, `BI_PNG`, and any compression other than `BI_RGB`/`BI_BITFIELDS`, with `TurboJpegUnsupportedException`.
-- `BI_BITFIELDS` on a 24-bit bitmap, or bitfield masks that are empty, non-contiguous, or overlapping, with `TurboJpegUnsupportedException`.
-- Malformed or truncated files, including a missing `BM` signature, a non-positive width, a zero or `int.MinValue` height, invalid planes or bit counts, palette or pixel offsets outside the buffer, and truncated pixel data, with `ArgumentException`.
+- OS/2 core bitmaps (DIB header size 12) and any DIB header size other than 40, 52, 56, 108, or 124: `TurboJpegUnsupportedException`.
+- RLE4/RLE8, `BI_JPEG`, `BI_PNG`, and compression other than `BI_RGB`/`BI_BITFIELDS`: `TurboJpegUnsupportedException`.
+- `BI_BITFIELDS` on 24-bit bitmaps, and empty, non-contiguous, or overlapping masks: `TurboJpegUnsupportedException`.
+- Malformed or truncated files, including a missing `BM` signature, non-positive width, zero or `int.MinValue` height, invalid planes or bit counts, offsets outside the buffer, and truncated pixel data: `ArgumentException`.
 
 ### Density
 
-`Density` is a `TurboJpegDensity` value with `X` and `Y` between 1 and 65535 (the unsigned 16-bit range of the JPEG density fields) and `PixelsPerInch`, `PixelsPerCentimeter`, or `Unknown` units. The `default` struct (0 x 0) is not a valid density.
+`Density` is a `TurboJpegDensity` with `X` and `Y` from 1 to 65535 and `PixelsPerInch`, `PixelsPerCentimeter`, or `Unknown` units. The default struct (0 x 0) is invalid.
 
-JPEG density is stored only in lossy YCbCr and grayscale files. Lossless JPEG output is RGB, and `Colorspace = Rgb` produces RGB output; neither can store a density. In those modes an explicit `Density` is rejected when encoding or sizing starts with `ArgumentException` (parameter name `options`), and BMP density is ignored: the encoder applies 1 x 1 with `Unknown` units.
+Density is written only for lossy YCbCr and grayscale output. Lossless and RGB output reject an explicit density and ignore the BMP density, writing 1 x 1 with `Unknown` units.
 
-When `Density` is `null` and the output is lossy YCbCr or grayscale, the encoder derives the density from the BMP's `biXPelsPerMeter` and `biYPelsPerMeter` values:
+With `Density = null` and lossy YCbCr or grayscale output, the encoder derives density from the BMP `biXPelsPerMeter` and `biYPelsPerMeter`:
 
-- A non-zero BMP density is converted to pixels per inch with `dpi = clamp(round(ppm * 0.0254), 1, 65535)` and written with `PixelsPerInch` units.
-- If only one BMP axis is non-zero, the same value is used for both axes.
-- If the BMP stores no density, the encoder applies 1 x 1 with `Unknown` units explicitly. This is not a 72 DPI value.
+- A non-zero value is converted to DPI and clamped to 1-65535.
+- If only one axis is non-zero, its value is used for both axes.
+- With no BMP density, the encoder writes 1 x 1 with `Unknown` units.
 
-In lossy YCbCr and grayscale modes, an explicit density overrides the BMP values and is applied verbatim:
-
-```csharp
-var options = new TurboJpegEncodeOptions
-{
-    Density = new TurboJpegDensity(300, 300, TurboJpegDensityUnits.PixelsPerInch),
-};
-```
-
-Lossless and RGB outputs ignore the BMP density, so the same BMP can encode with an explicit 96 DPI density in YCbCr mode and with 1 x 1 `Unknown` density after switching to lossless or RGB.
-
-### Performance and allocations
-
-- Uncompressed 24-bit and 32-bit BMPs in the layouts marked zero-copy above are passed directly to TurboJPEG. No managed pixel buffer is allocated and no pixel copy is made.
-- Other BMP layouts are converted once into a buffer rented from `ArrayPool<byte>.Shared`; the buffer is returned after encoding.
-- The `byte[]`-returning overloads compress into a pooled worst-case JPEG buffer, allocate the exact-size result array, and copy the encoded bytes once. This is the "one copy" output path.
-- The span overload writes the JPEG directly into the caller's destination and makes no output copy. Combined with a zero-copy BMP layout, neither the input pixels nor the output JPEG are copied.
-- `GetMaxJpegSize` lets callers allocate or reuse a destination without allocating a worst-case temporary buffer. The returned size is a worst case and can be considerably larger than the final JPEG.
-- The static facade pools native encoder handles. Converted pixel buffers and the temporary worst-case output buffer are pooled as well, so repeated encodes avoid repeated large allocations.
+An explicit `Density` overrides the BMP values.
 
 ## Errors
 
-- `ArgumentException`: empty input; invalid options, including an unsupported scaling factor, an invalid crop region, invalid restart or density combinations, or an invalid colorspace for encoding; a malformed or truncated BMP; a destination buffer that is too small; or a destination buffer that overlaps the source.
-- `ArgumentNullException`: a null options object passed to an options overload.
-- `ArgumentOutOfRangeException`: a negative crop offset, a non-positive crop dimension, an invalid BMP bit depth, or an option or density value outside its allowed range or not supported for the requested direction.
-- `TurboJpegUnsupportedException`: the image precision is outside 2-16 bits, or a valid BMP uses an encoding this library does not support.
-- `TurboJpegImageTooLargeException`: `MaxPixels` is exceeded, or the BMP, the worst-case JPEG size, or a conversion or scratch buffer would exceed `Array.MaxLength`.
-- `TurboJpegException`: a native TurboJPEG error, a native-library load failure, or a native warning while the direction's `StopOnWarning` option is `true`.
+- `ArgumentException`: empty input; invalid options (unsupported scaling factor, invalid crop, invalid restart or density combinations, invalid colorspace for encoding); malformed or truncated BMP; destination too small; destination overlapping the source.
+- `ArgumentNullException`: a null options object.
+- `ArgumentOutOfRangeException`: negative crop offset, non-positive crop dimension, invalid BMP bit depth, or an option or density value outside its allowed range or not supported for the requested direction.
+- `TurboJpegUnsupportedException`: image precision outside 2-16 bits, or a BMP encoding the library does not support.
+- `TurboJpegImageTooLargeException`: `MaxPixels` is exceeded, or the BMP, worst-case JPEG, or a conversion buffer would exceed `Array.MaxLength`.
+- `TurboJpegException`: native error, native-library load failure, or a native warning with the direction's `StopOnWarning` enabled.
 - `ObjectDisposedException`: an instance method was called after `Dispose`.
-- `PlatformNotSupportedException`: the current OS/architecture has no known runtime identifier and no explicit native path is configured.
+- `PlatformNotSupportedException`: no known runtime identifier for the current OS/architecture and no explicit native path.
 
 ## Native library loading
 
-Native libraries are distributed as separate runtime packages. Each native package contains one asset:
+Native libraries are distributed as separate runtime packages, one asset each:
 
 | Runtime | Asset |
 | --- | --- |
@@ -347,11 +289,9 @@ Native libraries are distributed as separate runtime packages. Each native packa
 | `linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
 | `osx-x64`, `osx-arm64` | `runtimes/osx/native/libturbojpeg.dylib` |
 
-The macOS library is a universal binary (x86_64 + arm64) supplied once by the `TurboJpeg.Wrapper.Native.osx-universal` package. The loader resolves the base `osx` runtime folder on both macOS architectures.
+The macOS library is a universal binary (x86_64 + arm64).
 
-The bundled Linux libraries are glibc builds; for musl/Alpine, supply a musl build through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
-
-Set `TURBOJPEG_NATIVE_LIBRARY_PATH` to the full path of a native library file to override discovery. When the variable is set to a non-blank value, it is the only location used; an invalid path fails immediately instead of falling back.
+Set `TURBOJPEG_NATIVE_LIBRARY_PATH` to the full path of a native library file to override discovery. A non-blank value is the only location used; an invalid path fails immediately.
 
 Otherwise the resolver tries, in order:
 
@@ -360,22 +300,14 @@ Otherwise the resolver tries, in order:
 3. `{library}` in `AppContext.BaseDirectory`.
 4. The operating system's normal library search.
 
-The resolver knows these runtime identifiers on Windows, Linux, and macOS: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, and `osx-arm64`. x86 is not supported. To add a different runtime, place the matching library under `runtimes/{rid}/native/` and include it in a native package. The native library is loaded on the first decode, the first encode, the first scaling-factor query, or when an instance handle is created.
+## Threading
 
-## Threading and performance
-
-- `TurboJpeg` is safe for concurrent use; each operation rents an exclusive decoder or encoder and returns it afterward. A failed call does not poison the pool.
-- `TurboJpegDecoder` and `TurboJpegEncoder` own one native handle each and are not thread-safe. Use one instance per thread or synchronize access.
-- `TurboJpegDecodeOptions` and `TurboJpegEncodeOptions` are immutable, so one options instance can be shared across threads and calls.
-- The lossy 8-bit non-CMYK path, and lossless inputs whose BMP depth matches the native pixel format, writes directly into the final BMP buffer. High-precision, CMYK, and lossless fallback paths decode into managed scratch buffers and convert into the BMP, so they are slower than the direct 8-bit path.
-- On the direct decode path with `AutoOrient`, orientations 1-4 write directly into the BMP; 24-bit mirroring uses one pooled row buffer. Orientations 5-8 rent a decoded-size scratch buffer from the shared array pool and transpose it into the BMP.
-- The 24-bit row mirror uses a portable `Vector128` implementation on both architectures. Axis-swapping transposes use SSE2/SSSE3 implementations on x64 and portable `Vector128` implementations on ARM64. 12/16-bit downconversion, CMYK conversion, grayscale expansion, and the managed luma fallback use SIMD kernels with scalar tails.
-- Cropping reduces decode and conversion work in proportion to the cropped output size.
-- The span decode and encode overloads let callers reuse a buffer and avoid allocating a result array per operation.
-- Supported scaling factors are cached after the first successful query.
+- `TurboJpeg` is safe for concurrent use.
+- `TurboJpegDecoder` and `TurboJpegEncoder` are not thread-safe. Use one instance per thread or synchronize access.
+- `TurboJpegDecodeOptions` and `TurboJpegEncodeOptions` are immutable and can be shared across threads and calls.
 
 ## Package contents and license
 
-The package contains the managed `net10.0` assembly, its XML documentation file, `README.md`, `LICENSE`, and `THIRD-PARTY-NOTICES.md`. It contains no native assets and has no package dependencies; add exactly one native package from the table above.
+The package contains the managed `net10.0` assembly, its XML documentation file, `README.md`, `LICENSE`, and `THIRD-PARTY-NOTICES.md`. It contains no native assets and has no package dependencies.
 
-The source code is licensed under the MIT License (`LICENSE`). The native libraries distributed through the companion native packages are libjpeg-turbo 3.2.0, licensed under BSD-3-Clause with the Independent JPEG Group and zlib notices (`THIRD-PARTY-NOTICES.md`). Both files are included in this package.
+The source code is licensed under the MIT License (`LICENSE`). The bundled native libraries are libjpeg-turbo 3.2.0, licensed under BSD-3-Clause with the Independent JPEG Group and zlib notices (`THIRD-PARTY-NOTICES.md`).
