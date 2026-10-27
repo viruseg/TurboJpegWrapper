@@ -1,13 +1,12 @@
 # TurboJpeg.Wrapper
 
-.NET 10 wrappers around libjpeg-turbo 3.2.0 and its TurboJPEG API. The repository provides two managed packages and five shared native runtime packages:
+.NET 10 wrappers around libjpeg-turbo 3.2.0 and its TurboJPEG API. The repository provides one managed package and five shared native runtime packages:
 
 | Managed package | Namespace | Purpose |
 | --- | --- | --- |
-| `TurboJpeg.Wrapper.Decoder` | `TurboJpegWrapper.Decoder` | Decodes 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK JPEG files (lossy, lossless, progressive, and arithmetic) to complete 8-, 24-, or 32-bit BMP files, with scaling, cropping, EXIF auto-orientation, and a warning policy. |
-| `TurboJpeg.Wrapper.Encoder` | `TurboJpegWrapper.Encoder` | Encodes uncompressed 1-, 4-, 8-, 16-, 24-, and 32-bit BMP files to JPEG, with quality, chroma subsampling, lossless, progressive, arithmetic coding, restart markers, and density options. |
+| `TurboJpeg.Wrapper` | `TurboJpegWrapper` | Decodes 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK JPEG files to complete 8-, 24-, or 32-bit BMP files (scaling, cropping, EXIF auto-orientation), and encodes uncompressed 1- to 32-bit BMP files to JPEG with quality, subsampling, colorspace, lossless, progressive, arithmetic coding, restart markers, and density options. |
 
-The managed packages contain no native code. Add exactly one native package that matches the deployment runtime; the same native package serves both managed packages.
+The managed package contains no native code. Add exactly one native package that matches the deployment runtime.
 
 > **Version `3.2.0-pre.2` is a prerelease.** All packages in this repository use that version. Pass `--prerelease` when installing from NuGet and pin exact versions for reproducible builds.
 
@@ -25,23 +24,14 @@ The macOS package contains one universal binary for x86_64 and arm64. Linux asse
 
 ## Installation
 
-### Decoder
-
 ```bash
-dotnet add package TurboJpeg.Wrapper.Decoder --prerelease
+dotnet add package TurboJpeg.Wrapper --prerelease
 dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 ```
 
-### Encoder
+Replace `win-x64` with the package for the target runtime from the table above.
 
-```bash
-dotnet add package TurboJpeg.Wrapper.Encoder --prerelease
-dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
-```
-
-Replace `win-x64` with the package for the target runtime from the table above. An application that uses both managed packages still references only one native package.
-
-Both packages expose a `TurboJpeg` facade and `TurboJpegException` types in their own namespaces. When importing both namespaces, use type or namespace aliases to avoid ambiguous references.
+The package exposes a single `TurboJpeg` facade in the `TurboJpegWrapper` namespace, covering both decoding and encoding.
 
 ## Requirements
 
@@ -82,10 +72,9 @@ The harnesses are in [bench/TurboJpeg.Wrapper.Encoder.Benchmark](bench/TurboJpeg
 
 ## Package documentation
 
-- [TurboJpeg.Wrapper.Decoder README](src/TurboJpeg.Wrapper.Decoder/README.md)
-- [TurboJpeg.Wrapper.Encoder README](src/TurboJpeg.Wrapper.Encoder/README.md)
+- [TurboJpeg.Wrapper README](src/TurboJpeg.Wrapper/README.md)
 
-Each managed package embeds its own README. Native packages contain the native asset, `LICENSE`, and `THIRD-PARTY-NOTICES.md` only.
+The managed package embeds its README. Native packages contain the native asset, `LICENSE`, and `THIRD-PARTY-NOTICES.md` only.
 
 ## License and third-party notices
 
