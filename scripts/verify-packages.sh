@@ -30,6 +30,10 @@ check_managed() {
   local package_entries
   package_entries="$(entries "$package")"
   grep -qxF "lib/net10.0/$id.dll" <<<"$package_entries" || fail "$id has no lib/net10.0/$id.dll"
+  grep -qxF "lib/net10.0/$id.xml" <<<"$package_entries" || fail "$id has no lib/net10.0/$id.xml"
+  local lib_count
+  lib_count="$(grep -c '^lib/' <<<"$package_entries" || true)"
+  [[ "$lib_count" -eq 2 ]] || fail "$id has $lib_count lib assets instead of 2"
   grep -qxF "README.md" <<<"$package_entries" || fail "$id has no README.md"
   grep -qxF "LICENSE" <<<"$package_entries" || fail "$id has no LICENSE"
   grep -qxF "THIRD-PARTY-NOTICES.md" <<<"$package_entries" || fail "$id has no THIRD-PARTY-NOTICES.md"
@@ -38,16 +42,16 @@ check_managed() {
   fi
   local package_readme
   package_readme="$(unzip -p "$package" README.md)"
-  if ! grep -qF "$id" <<<"$package_readme"; then
-    fail "$id README does not mention the package ID"
+  if ! grep -qxF "# $id" <<<"$package_readme"; then
+    fail "$id README title is not '# $id'"
   fi
   local package_nuspec
   package_nuspec="$(unzip -p "$package" "$(grep '\.nuspec$' <<<"$package_entries")")"
   if ! grep -q '<license type="file">LICENSE</license>' <<<"$package_nuspec"; then
     fail "$id has no file-based LICENSE metadata"
   fi
-  if grep -q 'dependency id="TurboJpeg.Wrapper.Native.' <<<"$package_nuspec"; then
-    fail "$id depends on a native package"
+  if grep -q '<dependency ' <<<"$package_nuspec"; then
+    fail "$id declares package dependencies"
   fi
 }
 
