@@ -14,7 +14,9 @@ dotnet add package TurboJpeg.Wrapper --prerelease
 dotnet add package TurboJpeg.Wrapper.Native.win-x64 --prerelease
 ```
 
-Available packages:
+Managed package: [![NuGet](https://img.shields.io/nuget/v/TurboJpeg.Wrapper.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper) [![NuGet](https://img.shields.io/nuget/dt/TurboJpeg.Wrapper.svg)](https://www.nuget.org/packages/TurboJpeg.Wrapper)
+
+Native packages:
 
 | Runtime | Version / downloads | Native package | Bundled asset |
 | --- | --- | --- | --- |
