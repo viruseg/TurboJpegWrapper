@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+    <RootNamespace>TurboJpegWrapper</RootNamespace>
+    <PackageId>TurboJpeg.Wrapper</PackageId>
+    <Description>Production-oriented .NET wrapper for the libjpeg-turbo TurboJPEG API: decode JPEG to BMP and encode BMP to JPEG. Native libraries are provided by separate per-platform packages.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\native\THIRD-PARTY-NOTICES.md"
+          Link="THIRD-PARTY-NOTICES.md"
+          CopyToOutputDirectory="PreserveNewest"
+          Pack="true"
+          PackagePath="\" />
+    <None Update="README.md"
+          Pack="true"
+          PackagePath="\" />
+  </ItemGroup>
+</Project>
