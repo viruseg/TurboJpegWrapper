@@ -305,19 +305,19 @@ Otherwise the resolver tries, in order:
 
 | Method           | Mean      | Error     | StdDev    | Ratio | RatioSD | Gen0     | Gen1     | Gen2     | Allocated  | Alloc Ratio |
 |----------------- |----------:|----------:|----------:|------:|--------:|---------:|---------:|---------:|-----------:|------------:|
-| EncodeTurboJpeg  |  5.390 ms | 0.0613 ms | 0.0656 ms |  1.00 |    0.02 |        - |        - |        - |  343.75 KB |        1.00 |
-| EncodeGdi        |  8.665 ms | 0.1143 ms | 0.1013 ms |  1.61 |    0.03 | 218.7500 | 203.1250 | 203.1250 | 1294.16 KB |        3.76 |
-| EncodeImageSharp | 27.392 ms | 0.2689 ms | 0.2384 ms |  5.08 |    0.07 | 500.0000 | 468.7500 | 468.7500 | 2991.58 KB |        8.70 |
+| EncodeTurboJpeg  |  5.254 ms | 0.0558 ms | 0.0436 ms |  1.00 |    0.01 |        - |        - |        - |  343.82 KB |        1.00 |
+| EncodeGdi        |  8.649 ms | 0.1313 ms | 0.1096 ms |  1.65 |    0.02 | 218.7500 | 203.1250 | 203.1250 | 1294.16 KB |        3.76 |
+| EncodeImageSharp | 29.317 ms | 0.4388 ms | 0.3426 ms |  5.58 |    0.08 | 500.0000 | 468.7500 | 468.7500 | 2991.58 KB |        8.70 |
 
 ### Decoding
 
 `TurboJpeg.DecodeToBmp` with `AutoOrient = true` and `Bpp24`; GDI+ and ImageSharp auto-orient from EXIF and produce a 24-bit BMP as well.
 
-| Method           | Mean      | Error     | StdDev    | Median    | Ratio | RatioSD | Gen0     | Gen1     | Gen2     | Allocated | Alloc Ratio |
-|----------------- |----------:|----------:|----------:|----------:|------:|--------:|---------:|---------:|---------:|----------:|------------:|
-| DecodeTurboJpeg  |  6.341 ms | 0.1250 ms | 0.2053 ms |  6.227 ms |  1.00 |    0.04 | 500.0000 | 500.0000 | 500.0000 |   4.42 MB |        1.00 |
-| DecodeGdi        | 14.172 ms | 0.2785 ms | 0.2980 ms | 14.187 ms |  2.24 |    0.08 | 875.0000 | 875.0000 | 875.0000 |   8.85 MB |        2.00 |
-| DecodeImageSharp | 15.002 ms | 0.2241 ms | 0.1872 ms | 14.986 ms |  2.37 |    0.08 | 765.6250 | 656.2500 | 656.2500 |   9.29 MB |        2.10 |
+| Method           | Mean      | Error     | StdDev    | Ratio | RatioSD | Gen0     | Gen1     | Gen2     | Allocated | Alloc Ratio |
+|----------------- |----------:|----------:|----------:|------:|--------:|---------:|---------:|---------:|----------:|------------:|
+| DecodeTurboJpeg  |  5.959 ms | 0.0782 ms | 0.0610 ms |  1.00 |    0.01 | 500.0000 | 500.0000 | 500.0000 |   4.42 MB |        1.00 |
+| DecodeGdi        | 13.347 ms | 0.1678 ms | 0.1401 ms |  2.24 |    0.03 | 937.5000 | 937.5000 | 937.5000 |   8.85 MB |        2.00 |
+| DecodeImageSharp | 14.993 ms | 0.1162 ms | 0.0970 ms |  2.52 |    0.03 | 718.7500 | 609.3750 | 609.3750 |   9.29 MB |        2.10 |
 
 GDI+ and ImageSharp do not expose the same chroma-subsampling and TurboJPEG-specific controls, so these results are throughput and allocation indicators, not a byte-identical output comparison.
 
