@@ -1,8 +1,6 @@
 # TurboJpeg.Wrapper
 
-Version `3.2.0-pre.2` (prerelease)
-
-A .NET 10 wrapper around libjpeg-turbo 3.2.0 and its TurboJPEG API. The managed package `TurboJpeg.Wrapper` (namespace `TurboJpegWrapper`) contains no native code; add exactly one native package for the deployment runtime.
+A .NET wrapper around the libjpeg-turbo TurboJPEG API. The managed package `TurboJpeg.Wrapper` (namespace `TurboJpegWrapper`) contains no native code; add exactly one native package for the deployment runtime.
 
 - Decodes JPEG to complete 8-, 24-, or 32-bit BMP files: 2- to 16-bit RGB, YCbCr, grayscale, CMYK, and YCCK input; scaling, cropping, EXIF auto-orientation.
 - Encodes uncompressed 1-, 4-, 8-, 16-, 24-, and 32-bit BMP files to JPEG: quality, subsampling, colorspace, lossless, progressive, arithmetic coding, restart markers, density.
@@ -24,11 +22,11 @@ Replace `win-x64` with the package for the target runtime:
 | Linux ARM64 | `TurboJpeg.Wrapper.Native.linux-arm64` | `runtimes/linux-arm64/native/libturbojpeg.so` |
 | macOS x64 and ARM64 | `TurboJpeg.Wrapper.Native.osx-universal` | `runtimes/osx/native/libturbojpeg.dylib` |
 
-If the matching native package is missing, the first decode, encode, or native-handle creation throws `TurboJpegException` with the expected native library paths. The macOS package contains one universal binary for x86_64 and arm64.
+If the matching native package is missing, the first decode, encode, or native-handle creation throws `TurboJpegException` with the expected native library paths.
 
 ## Requirements
 
-- .NET 10 (`net10.0`).
+- .NET 10 or later.
 - Windows x64/ARM64, Linux x64/ARM64, or macOS x64/ARM64. x86 is not supported.
 - Bundled native library: libjpeg-turbo 3.2.0.
 - Linux: glibc 2.17 or later. musl/Alpine requires a musl libjpeg-turbo build supplied through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
@@ -324,8 +322,6 @@ GDI+ and ImageSharp do not expose the same chroma-subsampling and TurboJPEG-spec
 The harnesses are in [bench/TurboJpeg.Wrapper.Encoder.Benchmark](bench/TurboJpeg.Wrapper.Encoder.Benchmark) and [bench/TurboJpeg.Wrapper.Decoder.Benchmark](bench/TurboJpeg.Wrapper.Decoder.Benchmark).
 
 ## License and third-party notices
-
-The managed package contains the `net10.0` assembly, its XML documentation file, this README, `LICENSE`, and `THIRD-PARTY-NOTICES.md`. It contains no native assets and has no package dependencies. Native packages contain the native asset, `LICENSE`, and `THIRD-PARTY-NOTICES.md`.
 
 The source code is licensed under the MIT License. See [LICENSE](LICENSE).
 
