@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 output="${1:-$repo_root/artifacts/packages}"
-version="$(dotnet msbuild src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj -getProperty:Version -nologo)"
+version="$(dotnet msbuild src/TurboJpeg.Wrapper/TurboJpeg.Wrapper.csproj -getProperty:Version -nologo)"
 
 fail() {
   echo "verify-packages: $*" >&2
@@ -20,7 +20,7 @@ nupkg() {
 }
 
 package_count="$(find "$output" -maxdepth 1 -type f -name '*.nupkg' | wc -l | tr -d ' ')"
-[[ "$package_count" -eq 7 ]] || fail "expected 7 packages, found $package_count"
+[[ "$package_count" -eq 6 ]] || fail "expected 6 packages, found $package_count"
 
 check_managed() {
   local id="$1"
@@ -51,8 +51,7 @@ check_managed() {
   fi
 }
 
-check_managed TurboJpeg.Wrapper.Decoder
-check_managed TurboJpeg.Wrapper.Encoder
+check_managed TurboJpeg.Wrapper
 
 check_native() {
   local id="$1"

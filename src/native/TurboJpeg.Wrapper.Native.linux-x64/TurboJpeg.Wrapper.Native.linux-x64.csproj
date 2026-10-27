@@ -5,7 +5,7 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <PackageId>TurboJpeg.Wrapper.Native.linux-x64</PackageId>
-    <Description>TurboJPEG 3.2.0 native library for Linux x64, used by TurboJpeg.Wrapper.Decoder and TurboJpeg.Wrapper.Encoder.</Description>
+    <Description>TurboJPEG 3.2.0 native library for Linux x64, used by TurboJpeg.Wrapper.</Description>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\..\native\linux-x64\libturbojpeg.so"

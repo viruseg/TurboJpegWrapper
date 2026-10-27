@@ -19,7 +19,7 @@ cd "$repo_root"
 
 feed="$repo_root/artifacts/packages"
 [[ -d "$feed" ]] || { echo "missing package feed: $feed" >&2; exit 1; }
-version="$(dotnet msbuild src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj -getProperty:Version -nologo)"
+version="$(dotnet msbuild src/TurboJpeg.Wrapper/TurboJpeg.Wrapper.csproj -getProperty:Version -nologo)"
 smoke_dir="$repo_root/artifacts/smoke"
 
 rm -rf "$smoke_dir"
@@ -57,22 +57,20 @@ cat > "$smoke_dir/Smoke.csproj" <<EOF
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="TurboJpeg.Wrapper.Decoder" Version="$version" />
-    <PackageReference Include="TurboJpeg.Wrapper.Encoder" Version="$version" />
+    <PackageReference Include="TurboJpeg.Wrapper" Version="$version" />
     <PackageReference Include="TurboJpeg.Wrapper.Native.$native_suffix" Version="$version" />
   </ItemGroup>
 </Project>
 EOF
 
 cat > "$smoke_dir/Program.cs" <<'CS'
-using DecoderApi = TurboJpegWrapper.Decoder.TurboJpeg;
-using EncoderApi = TurboJpegWrapper.Encoder.TurboJpeg;
+using TurboJpegWrapper;
 
 var jpeg = File.ReadAllBytes(args[0]);
-var bmp = DecoderApi.DecodeToBmp(jpeg);
-var encoded = EncoderApi.EncodeToJpeg(bmp);
-var roundTrip = DecoderApi.DecodeToBmp(encoded);
-var info = DecoderApi.GetImageInfo(encoded);
+var bmp = TurboJpeg.DecodeToBmp(jpeg);
+var encoded = TurboJpeg.EncodeToJpeg(bmp);
+var roundTrip = TurboJpeg.DecodeToBmp(encoded);
+var info = TurboJpeg.GetImageInfo(encoded);
 return info.Width > 0 && info.Height > 0 && roundTrip.Length > 54 ? 0 : 1;
 CS
 

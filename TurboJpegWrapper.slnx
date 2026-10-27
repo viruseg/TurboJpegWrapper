@@ -1,7 +1,5 @@
 <Solution>
   <Project Path="src/TurboJpeg.Wrapper/TurboJpeg.Wrapper.csproj" />
-  <Project Path="src/TurboJpeg.Wrapper.Decoder/TurboJpeg.Wrapper.Decoder.csproj" />
-  <Project Path="src/TurboJpeg.Wrapper.Encoder/TurboJpeg.Wrapper.Encoder.csproj" />
   <Project Path="src/native/TurboJpeg.Wrapper.Native.win-x64/TurboJpeg.Wrapper.Native.win-x64.csproj" />
   <Project Path="src/native/TurboJpeg.Wrapper.Native.win-arm64/TurboJpeg.Wrapper.Native.win-arm64.csproj" />
   <Project Path="src/native/TurboJpeg.Wrapper.Native.linux-x64/TurboJpeg.Wrapper.Native.linux-x64.csproj" />
