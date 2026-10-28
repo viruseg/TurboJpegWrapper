@@ -423,7 +423,7 @@ public sealed class TurboJpegDecoder : IDisposable
             swapsAxes);
     }
 
-    private unsafe void DecodeWithPlan(
+    private void DecodeWithPlan(
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,
         in DecodePlan plan,
@@ -625,7 +625,7 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
-    private static unsafe void DecodeRgbToGrayToBmp(
+    private static void DecodeRgbToGrayToBmp(
         nint handle,
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,
@@ -678,7 +678,7 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
-    private static unsafe void DecodeGrayExpandToBmp(
+    private static void DecodeGrayExpandToBmp(
         nint handle,
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,
@@ -1059,7 +1059,7 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
-    private static unsafe void DecodeHighPrecisionToBmp(
+    private static void DecodeHighPrecisionToBmp(
         nint handle,
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,
@@ -1443,7 +1443,7 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
-    private static unsafe void DecodeRgbToGrayWithOrientation(
+    private static void DecodeRgbToGrayWithOrientation(
         nint handle,
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,
@@ -1501,7 +1501,7 @@ public sealed class TurboJpegDecoder : IDisposable
         }
     }
 
-    private static unsafe void DecodeGrayExpandWithOrientation(
+    private static void DecodeGrayExpandWithOrientation(
         nint handle,
         ReadOnlySpan<byte> jpeg,
         TurboJpegDecodeOptions options,

@@ -123,7 +123,7 @@ internal static class BmpHeaderWriter
         return template;
     }
 
-    internal static unsafe void ClearPadding(
+    internal static void ClearPadding(
         Span<byte> destination, int width, int height, TurboJpegBmpBitDepth bitDepth)
     {
         var rowBytes = checked(width * GetBytesPerPixel(bitDepth));
