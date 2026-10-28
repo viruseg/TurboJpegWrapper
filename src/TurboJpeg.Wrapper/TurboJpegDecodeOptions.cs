@@ -8,34 +8,30 @@ public sealed record TurboJpegDecodeOptions
     /// <summary>Gets the default decoding options.</summary>
     public static TurboJpegDecodeOptions Default { get; } = new();
 
-    private readonly TurboJpegScalingFactor _scalingFactor = TurboJpegScalingFactor.One;
-    private readonly int _maxPixels = 100_000_000;
-    private readonly int _maxMemoryMegabytes = 0;
-    private readonly int _scanLimit = 500;
-    private readonly TurboJpegBmpBitDepth _bmpBitDepth = TurboJpegBmpBitDepth.Bpp32;
-
     /// <summary>Gets the output scaling factor.</summary>
+    /// <remarks>The default is 1:1.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">
     /// The numerator or denominator is zero or negative.
     /// </exception>
     public TurboJpegScalingFactor ScalingFactor
     {
-        get => _scalingFactor;
+        get;
         init
         {
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Numerator, nameof(ScalingFactor));
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value.Denominator, nameof(ScalingFactor));
-            _scalingFactor = value;
+            field = value;
         }
-    }
+    } = TurboJpegScalingFactor.One;
 
     /// <summary>Gets the region to decode; <see langword="null"/> decodes the full scaled image.</summary>
     /// <remarks>
-    /// Coordinates refer to the scaled, stored image: <see cref="ScalingFactor"/> is applied first,
-    /// and <see cref="AutoOrient"/> then transforms the cropped pixels. The region must fit inside
-    /// the scaled image, and <see cref="TurboJpegCrop.X"/> must be divisible by the scaled iMCU
-    /// width; <see cref="TurboJpegCrop.Y"/> is not required to be iMCU-aligned. Cropping is
-    /// supported only for lossy JPEGs with a known subsampling level.
+    /// The default is <see langword="null"/>. Coordinates refer to the scaled, stored image:
+    /// <see cref="ScalingFactor"/> is applied first, and <see cref="AutoOrient"/> then transforms
+    /// the cropped pixels. The region must fit inside the scaled image, and
+    /// <see cref="TurboJpegCrop.X"/> must be divisible by the scaled iMCU width;
+    /// <see cref="TurboJpegCrop.Y"/> is not required to be iMCU-aligned. Cropping is supported
+    /// only for lossy JPEGs with a known subsampling level.
     /// </remarks>
     /// <exception cref="ArgumentException">
     /// The region does not fit inside the scaled image, is not iMCU-aligned horizontally, or the
@@ -54,57 +50,62 @@ public sealed record TurboJpegDecodeOptions
     public bool StopOnWarning { get; init; } = true;
 
     /// <summary>Gets a value indicating whether the fastest DCT/IDCT algorithm is used.</summary>
+    /// <remarks>The default is <see langword="false"/>.</remarks>
     public bool FastDct { get; init; } = false;
 
     /// <summary>Gets a value indicating whether the fastest chroma upsampling algorithm is used.</summary>
+    /// <remarks>The default is <see langword="false"/>.</remarks>
     public bool FastUpsampling { get; init; } = false;
 
     /// <summary>Gets the maximum number of source pixels; 0 means no limit.</summary>
+    /// <remarks>The default is 100,000,000.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     public int MaxPixels
     {
-        get => _maxPixels;
+        get;
         init
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value, nameof(MaxPixels));
-            _maxPixels = value;
+            field = value;
         }
-    }
+    } = 100_000_000;
 
     /// <summary>Gets the maximum native intermediate memory in megabytes; 0 means no limit.</summary>
     /// <remarks>
-    /// The limit covers native TurboJPEG allocations. The returned BMP array, the auto-orient
-    /// scratch buffer, and the precision and CMYK conversion scratch buffers are managed and are
-    /// not counted against it.
+    /// The default is 0. The limit covers native TurboJPEG allocations. The returned BMP array,
+    /// the auto-orient scratch buffer, and the precision and CMYK conversion scratch buffers are
+    /// managed and are not counted against it.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     public int MaxMemoryMegabytes
     {
-        get => _maxMemoryMegabytes;
+        get;
         init
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value, nameof(MaxMemoryMegabytes));
-            _maxMemoryMegabytes = value;
+            field = value;
         }
-    }
+    } = 0;
 
     /// <summary>Gets the maximum number of progressive scans; 0 means no limit.</summary>
+    /// <remarks>The default is 500.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     public int ScanLimit
     {
-        get => _scanLimit;
+        get;
         init
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value, nameof(ScanLimit));
-            _scanLimit = value;
+            field = value;
         }
-    }
+    } = 500;
 
     /// <summary>Gets the BMP output bit depth.</summary>
+    /// <remarks>The default is <see cref="TurboJpegBmpBitDepth.Bpp32"/>.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is not 8, 24, or 32 bits per pixel.</exception>
     public TurboJpegBmpBitDepth BmpBitDepth
     {
-        get => _bmpBitDepth;
+        get;
         init
         {
             if (value is not TurboJpegBmpBitDepth.Bpp8
@@ -114,9 +115,9 @@ public sealed record TurboJpegDecodeOptions
                 ThrowHelper.ThrowBmpBitDepthOutOfRange(nameof(BmpBitDepth), value);
             }
 
-            _bmpBitDepth = value;
+            field = value;
         }
-    }
+    } = TurboJpegBmpBitDepth.Bpp32;
 
     /// <summary>Gets a value indicating whether the EXIF orientation is applied to the BMP.</summary>
     /// <remarks>
