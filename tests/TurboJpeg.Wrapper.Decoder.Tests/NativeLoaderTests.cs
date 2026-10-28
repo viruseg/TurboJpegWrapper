@@ -181,7 +181,7 @@ public sealed class NativeLoaderTests
 
         Assert.Contains("operating system search path", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("probe failure", exception.Message);
-        Assert.Contains("3.2.0", exception.Message);
+        Assert.Contains("3.2.1", exception.Message);
         Assert.Same(inner, exception.InnerException);
     }
 
@@ -207,7 +207,7 @@ public sealed class NativeLoaderTests
         var exception = TurboJpegNative.CreateLoadException(inner, overridePath: null);
 
         Assert.Contains("entry point", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("3.2.0", exception.Message);
+        Assert.Contains("3.2.1", exception.Message);
         Assert.Contains("tj3InitVersion", exception.Message);
     }
 }

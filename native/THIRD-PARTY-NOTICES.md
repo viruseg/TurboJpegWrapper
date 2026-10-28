@@ -1,8 +1,8 @@
 # Third-Party Notices
 
-This project redistributes the libjpeg-turbo 3.2.0 runtime libraries for Windows (`turbojpeg.dll`), Linux (`libturbojpeg.so`), and macOS (`libturbojpeg.dylib`).
+This project redistributes the libjpeg-turbo 3.2.1 runtime libraries for Windows (`turbojpeg.dll`), Linux (`libturbojpeg.so`), and macOS (`libturbojpeg.dylib`).
 
-Source: https://github.com/libjpeg-turbo/libjpeg-turbo/releases/tag/3.2.0
+Source: https://github.com/libjpeg-turbo/libjpeg-turbo/releases/tag/3.2.1
 
 ## libjpeg-turbo (TurboJPEG API)
 

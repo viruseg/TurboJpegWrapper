@@ -32,7 +32,7 @@ If the matching native package is missing, the first decode, encode, or native-h
 
 - .NET 10 or later.
 - Windows x64/ARM64, Linux x64/ARM64, or macOS x64/ARM64.
-- Bundled native library: libjpeg-turbo 3.2.0.
+- Bundled native library: libjpeg-turbo 3.2.1.
 - Linux: glibc 2.17 or later. musl/Alpine requires a musl libjpeg-turbo build supplied through `TURBOJPEG_NATIVE_LIBRARY_PATH`.
 - macOS: 10.7 or later on x64, 11 or later on ARM64.
 
@@ -329,4 +329,4 @@ The harnesses are in [bench/TurboJpeg.Wrapper.Encoder.Benchmark](bench/TurboJpeg
 
 The source code is licensed under the MIT License. See [LICENSE](LICENSE).
 
-The bundled native libraries are libjpeg-turbo 3.2.0, distributed under the BSD-3-Clause license with the Independent JPEG Group and zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md).
+The bundled native libraries are libjpeg-turbo 3.2.1, distributed under the BSD-3-Clause license with the Independent JPEG Group and zlib notices. See [native/THIRD-PARTY-NOTICES.md](native/THIRD-PARTY-NOTICES.md).

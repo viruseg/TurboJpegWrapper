@@ -106,7 +106,7 @@ internal static class TurboJpegNativeLoader
         }
 
         throw GetExceptionFactory()(
-            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.0, " +
+            $"Failed to load the TurboJPEG native library (libjpeg-turbo 3.2.1, " +
             $"TurboJPEG API version {TurboJpegNativeApi.ApiVersion}). " +
             $"Attempts: {string.Join("; ", attempts)}. " +
             $"Set {OverrideEnvironmentVariable} to an explicit library path.",
@@ -115,7 +115,7 @@ internal static class TurboJpegNativeLoader
 
     internal static Exception CreateLoadException(Exception innerException, string? overridePath)
     {
-        var version = $"libjpeg-turbo 3.2.0, TurboJPEG API version {TurboJpegNativeApi.ApiVersion}";
+        var version = $"libjpeg-turbo 3.2.1, TurboJPEG API version {TurboJpegNativeApi.ApiVersion}";
         var exceptionFactory = GetExceptionFactory();
 
         if (innerException is EntryPointNotFoundException)
@@ -126,7 +126,7 @@ internal static class TurboJpegNativeLoader
 
             return exceptionFactory(
                 $"The TurboJPEG native library was found {foundAt}, but a required entry point is missing. " +
-                $"This library requires {version}; install TurboJPEG 3.2.0 or newer. " +
+                $"This library requires {version}; install TurboJPEG 3.2.1 or newer. " +
                 $"Reason: {innerException.Message}",
                 innerException);
         }
