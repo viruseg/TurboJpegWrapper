@@ -28,7 +28,7 @@ internal sealed class RetryableCache<T> where T : class
                 value = _factory();
                 if (value is null)
                 {
-                    throw new InvalidOperationException("The cache factory returned null.");
+                    ThrowHelper.ThrowCacheFactoryReturnedNull();
                 }
 
                 Volatile.Write(ref _value, value);

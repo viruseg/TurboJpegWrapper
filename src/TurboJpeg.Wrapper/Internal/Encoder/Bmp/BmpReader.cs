@@ -15,14 +15,12 @@ internal static class BmpReader
     {
         if (bmp.Length < MinimumHeaderSize)
         {
-            throw new ArgumentException(
-                "The BMP buffer is too short to contain a BMP file header and the DIB header size.",
-                nameof(bmp));
+            ThrowHelper.ThrowBmpFileHeaderTooShort();
         }
 
         if (bmp[0] != (byte)'B' || bmp[1] != (byte)'M')
         {
-            throw new ArgumentException("The BMP signature is missing.", nameof(bmp));
+            ThrowHelper.ThrowBmpSignatureMissing();
         }
 
         // The DIB size decides whether the file is an unsupported OS/2 core bitmap, so it
@@ -35,29 +33,25 @@ internal static class BmpReader
             dibSizeValue != 108 &&
             dibSizeValue != 124)
         {
-            throw new TurboJpegUnsupportedException(
-                dibSizeValue == 12
-                    ? "OS/2 core BMPs (DIB header size 12) are not supported."
-                    : $"BMP DIB header size {dibSizeValue} is not supported.");
+            ThrowHelper.ThrowBmpDibHeaderSizeUnsupported(dibSizeValue);
         }
 
         var dibSize = (int)dibSizeValue;
         if (bmp.Length < FileHeaderSize + dibSize)
         {
-            throw new ArgumentException(
-                "The BMP buffer is too short to contain the DIB header.", nameof(bmp));
+            ThrowHelper.ThrowBmpDibHeaderTooShort();
         }
 
         var width = BinaryPrimitives.ReadInt32LittleEndian(bmp.Slice(18, 4));
         if (width <= 0)
         {
-            throw new ArgumentException("The BMP width must be positive.", nameof(bmp));
+            ThrowHelper.ThrowBmpWidthNotPositive();
         }
 
         var storedHeight = BinaryPrimitives.ReadInt32LittleEndian(bmp.Slice(22, 4));
         if (storedHeight is 0 or int.MinValue)
         {
-            throw new ArgumentException("The BMP height is invalid.", nameof(bmp));
+            ThrowHelper.ThrowBmpHeightInvalid();
         }
 
         var topDown = storedHeight < 0;
@@ -66,9 +60,7 @@ internal static class BmpReader
         var planes = BinaryPrimitives.ReadUInt16LittleEndian(bmp.Slice(26, 2));
         if (planes != 1)
         {
-            throw new ArgumentException(
-                $"The BMP bit planes value {planes} is invalid; exactly one plane is required.",
-                nameof(bmp));
+            ThrowHelper.ThrowBmpPlaneCountInvalid(planes);
         }
 
         var bitCount = BinaryPrimitives.ReadUInt16LittleEndian(bmp.Slice(28, 2));
@@ -79,8 +71,7 @@ internal static class BmpReader
             bitCount != 24 &&
             bitCount != 32)
         {
-            throw new ArgumentException(
-                $"The BMP bit count {bitCount} is not supported.", nameof(bmp));
+            ThrowHelper.ThrowBmpBitCountUnsupported(bitCount);
         }
 
         var compression = BinaryPrimitives.ReadUInt32LittleEndian(bmp.Slice(30, 4));
@@ -91,26 +82,25 @@ internal static class BmpReader
             case 3:
                 if (bitCount != 16 && bitCount != 32)
                 {
-                    throw new TurboJpegUnsupportedException(
-                        "BI_BITFIELDS is supported only for 16-bit and 32-bit BMPs.");
+                    ThrowHelper.ThrowBmpBitfieldsBitCountUnsupported();
                 }
 
                 break;
             case 1:
-                throw new TurboJpegUnsupportedException(
-                    "RLE8-compressed BMPs are not supported.");
+                ThrowHelper.ThrowBmpRle8Unsupported();
+                break;
             case 2:
-                throw new TurboJpegUnsupportedException(
-                    "RLE4-compressed BMPs are not supported.");
+                ThrowHelper.ThrowBmpRle4Unsupported();
+                break;
             case 4:
-                throw new TurboJpegUnsupportedException(
-                    "JPEG-compressed BMPs are not supported.");
+                ThrowHelper.ThrowBmpJpegCompressionUnsupported();
+                break;
             case 5:
-                throw new TurboJpegUnsupportedException(
-                    "PNG-compressed BMPs are not supported.");
+                ThrowHelper.ThrowBmpPngCompressionUnsupported();
+                break;
             default:
-                throw new TurboJpegUnsupportedException(
-                    $"BMP compression {compression} is not supported.");
+                ThrowHelper.ThrowBmpCompressionUnsupported(compression);
+                break;
         }
 
         var densityX = BinaryPrimitives.ReadInt32LittleEndian(bmp.Slice(38, 4));
@@ -128,15 +118,12 @@ internal static class BmpReader
 
         if (pixelOffsetValue < minimumPixelOffset)
         {
-            throw new ArgumentException(
-                "The BMP pixel offset overlaps the file header, DIB header, or bitfield masks.",
-                nameof(bmp));
+            ThrowHelper.ThrowBmpPixelOffsetOverlapsHeader();
         }
 
         if (pixelOffsetValue > bmp.Length)
         {
-            throw new ArgumentException(
-                "The BMP pixel offset is outside the buffer.", nameof(bmp));
+            ThrowHelper.ThrowBmpPixelOffsetOutsideBuffer();
         }
 
         var pixelOffset = (int)pixelOffsetValue;
@@ -148,16 +135,14 @@ internal static class BmpReader
             long count = clrUsed != 0 ? clrUsed : 1u << bitCount;
             if (count > int.MaxValue)
             {
-                throw new ArgumentException(
-                    "The BMP palette entry count is too large.", nameof(bmp));
+                ThrowHelper.ThrowBmpPaletteTooLarge();
             }
 
             paletteOffset = headerEnd;
             var paletteEnd = paletteOffset + count * 4;
             if (paletteEnd > pixelOffset)
             {
-                throw new ArgumentException(
-                    "The BMP palette overlaps or extends past the pixel data.", nameof(bmp));
+                ThrowHelper.ThrowBmpPaletteOverlapsPixels();
             }
 
             paletteCount = (int)count;
@@ -182,8 +167,7 @@ internal static class BmpReader
                 (redMask & blueMask) != 0 ||
                 (greenMask & blueMask) != 0)
             {
-                throw new TurboJpegUnsupportedException(
-                    "BMP bitfield masks must not overlap.");
+                ThrowHelper.ThrowBmpBitfieldMasksOverlap();
             }
         }
         else if (bitCount == 16)
@@ -196,14 +180,14 @@ internal static class BmpReader
         var strideValue = ((long)width * bitCount + 31) / 32 * 4;
         if (strideValue > int.MaxValue)
         {
-            throw new ArgumentException("The BMP row stride is too large.", nameof(bmp));
+            ThrowHelper.ThrowBmpRowStrideTooLarge();
         }
 
         var stride = (int)strideValue;
         var availableBytes = bmp.Length - pixelOffset;
         if (height > availableBytes / stride)
         {
-            throw new ArgumentException("The BMP pixel data is truncated.", nameof(bmp));
+            ThrowHelper.ThrowBmpPixelDataTruncated();
         }
 
         return new BmpInfo(
@@ -227,8 +211,7 @@ internal static class BmpReader
     {
         if (mask == 0)
         {
-            throw new TurboJpegUnsupportedException(
-                $"The BMP {channel} bitfield mask is empty.");
+            ThrowHelper.ThrowBmpBitfieldMaskEmpty(channel);
         }
 
         // The specified contiguity test (mask & (mask + 1)) == 0 applies to a run of ones
@@ -236,8 +219,7 @@ internal static class BmpReader
         var field = mask >> BitOperations.TrailingZeroCount(mask);
         if ((field & unchecked(field + 1)) != 0)
         {
-            throw new TurboJpegUnsupportedException(
-                $"The BMP {channel} bitfield mask is not contiguous.");
+            ThrowHelper.ThrowBmpBitfieldMaskNotContiguous(channel);
         }
     }
 }

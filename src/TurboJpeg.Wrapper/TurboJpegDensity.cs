@@ -1,3 +1,5 @@
+using TurboJpegWrapper.Internal;
+
 namespace TurboJpegWrapper;
 
 /// <summary>Represents the pixel density stored in the JPEG header.</summary>
@@ -93,10 +95,7 @@ public readonly record struct TurboJpegDensity
     {
         if (units is < TurboJpegDensityUnits.Unknown or > TurboJpegDensityUnits.PixelsPerCentimeter)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(Units),
-                units,
-                "The density units must be Unknown, PixelsPerInch, or PixelsPerCentimeter.");
+            ThrowHelper.ThrowDensityUnitsOutOfRange(units);
         }
     }
 }

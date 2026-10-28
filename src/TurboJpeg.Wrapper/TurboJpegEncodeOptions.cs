@@ -1,3 +1,5 @@
+using TurboJpegWrapper.Internal.Encoder;
+
 namespace TurboJpegWrapper;
 
 /// <summary>Immutable options that control JPEG encoding.</summary>
@@ -45,10 +47,7 @@ public sealed record TurboJpegEncodeOptions
         {
             if (value is < TurboJpegSubsampling.Yuv444 or > TurboJpegSubsampling.Yuv24)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(Subsampling),
-                    value,
-                    "The subsampling must be a defined value other than Unknown.");
+                ThrowHelper.ThrowSubsamplingOutOfRange(value);
             }
 
             field = value;
@@ -79,10 +78,7 @@ public sealed record TurboJpegEncodeOptions
                 and not TurboJpegColorspace.YCbCr
                 and not TurboJpegColorspace.Grayscale)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(Colorspace),
-                    value,
-                    "The color space must be Default, Rgb, YCbCr, or Grayscale.");
+                ThrowHelper.ThrowColorspaceOutOfRange(value);
             }
 
             field = value;

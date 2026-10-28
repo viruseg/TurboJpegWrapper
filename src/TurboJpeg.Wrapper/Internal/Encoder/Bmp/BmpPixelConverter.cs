@@ -106,10 +106,7 @@ internal static class BmpPixelConverter
         var pitch = (long)info.Width * bytesPerPixel;
         if (pitch > Array.MaxLength || info.Height > Array.MaxLength / pitch)
         {
-            throw new TurboJpegImageTooLargeException(
-                $"The converted pixel buffer for a {info.Width}x{info.Height} " +
-                $"{info.BitCount}-bit BMP exceeds the maximum array length of " +
-                $"{Array.MaxLength} bytes.");
+            ThrowHelper.ThrowBmpPixelsTooLarge(info.Width, info.Height, info.BitCount);
         }
 
         var byteCount = checked((int)(pitch * info.Height));

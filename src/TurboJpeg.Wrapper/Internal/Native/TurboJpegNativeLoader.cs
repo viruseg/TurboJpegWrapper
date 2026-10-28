@@ -61,16 +61,14 @@ internal static class TurboJpegNativeLoader
             }
             catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
             {
-                throw CreateLoadException(ex, overridePath);
+                ThrowHelper.Throw(CreateLoadException(ex, overridePath));
             }
         }
 
         var os = GetCurrentPlatform();
         if (GetRuntimeIdentifier(os, RuntimeInformation.ProcessArchitecture) is null)
         {
-            throw new PlatformNotSupportedException(
-                $"TurboJPEG native library loading is not supported on {os} with architecture " +
-                $"{RuntimeInformation.ProcessArchitecture}. Set {OverrideEnvironmentVariable} to an explicit library path.");
+            throw ThrowHelper.CreateNativeLibraryLoadUnsupported(os, RuntimeInformation.ProcessArchitecture);
         }
 
         var attempts = new List<string>();
@@ -199,8 +197,7 @@ internal static class TurboJpegNativeLoader
             return "libturbojpeg.dylib";
         }
 
-        throw new PlatformNotSupportedException(
-            $"The TurboJPEG native library file name is not known for OS '{os}'.");
+        throw ThrowHelper.CreateNativeLibraryFileNameUnsupported(os);
     }
 
     internal static IReadOnlyList<string> GetCandidatePaths() =>
@@ -233,11 +230,16 @@ internal static class TurboJpegNativeLoader
         return paths;
     }
 
-    private static Func<string, Exception?, Exception> GetExceptionFactory() =>
-        Volatile.Read(ref s_exceptionFactory)
-        ?? throw new InvalidOperationException(
-            "The TurboJPEG exception factory has not been registered. The managed package must call " +
-            $"{nameof(TurboJpegNativeLoader)}.{nameof(EnsureRegistered)} from a module initializer.");
+    private static Func<string, Exception?, Exception> GetExceptionFactory()
+    {
+        var factory = Volatile.Read(ref s_exceptionFactory);
+        if (factory is null)
+        {
+            ThrowHelper.ThrowExceptionFactoryNotRegistered();
+        }
+
+        return factory;
+    }
 
     private static OSPlatform GetCurrentPlatform()
     {
@@ -256,7 +258,6 @@ internal static class TurboJpegNativeLoader
             return OSPlatform.OSX;
         }
 
-        throw new PlatformNotSupportedException(
-            "TurboJPEG native library loading is supported only on Windows, Linux, and macOS.");
+        throw ThrowHelper.CreateNativeLibraryPlatformUnsupported();
     }
 }
