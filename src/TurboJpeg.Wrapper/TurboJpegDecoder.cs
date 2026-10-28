@@ -331,9 +331,8 @@ public sealed class TurboJpegDecoder : IDisposable
                 _ => DecodePipeline.CmykFrom16,
             };
         }
-        else if (info.IsLossless
-            && info.Colorspace == TurboJpegColorspace.Grayscale
-            && bitDepth is TurboJpegBmpBitDepth.Bpp24 or TurboJpegBmpBitDepth.Bpp32)
+        else if (info is { IsLossless: true, Colorspace: TurboJpegColorspace.Grayscale }
+                 && bitDepth is TurboJpegBmpBitDepth.Bpp24 or TurboJpegBmpBitDepth.Bpp32)
         {
             pixelFormat = TurboJpegNativeApi.PixelFormatGray;
             pipeline = info.Precision switch
@@ -344,8 +343,7 @@ public sealed class TurboJpegDecoder : IDisposable
             };
         }
         else if (bitDepth == TurboJpegBmpBitDepth.Bpp8
-            && info.IsLossless
-            && info.Colorspace == TurboJpegColorspace.Rgb)
+                 && info is { IsLossless: true, Colorspace: TurboJpegColorspace.Rgb })
         {
             pixelFormat = TurboJpegNativeApi.PixelFormatBgr;
             pipeline = info.Precision switch

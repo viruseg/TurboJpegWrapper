@@ -373,7 +373,7 @@ public sealed class TurboJpegEncoder : IDisposable
             return density;
         }
 
-        if (info.DensityX == 0 && info.DensityY == 0)
+        if (info is { DensityX: 0, DensityY: 0 })
         {
             // Apply the native default explicitly so a reused handle cannot keep the density
             // of a previous encode.

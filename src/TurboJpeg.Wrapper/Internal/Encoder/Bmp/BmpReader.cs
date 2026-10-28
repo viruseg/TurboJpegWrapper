@@ -55,7 +55,7 @@ internal static class BmpReader
         }
 
         var storedHeight = BinaryPrimitives.ReadInt32LittleEndian(bmp.Slice(22, 4));
-        if (storedHeight == 0 || storedHeight == int.MinValue)
+        if (storedHeight is 0 or int.MinValue)
         {
             throw new ArgumentException("The BMP height is invalid.", nameof(bmp));
         }

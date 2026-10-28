@@ -43,9 +43,7 @@ internal static class ExifOrientationReader
                 break;
             }
 
-            if (marker == 0x00
-                || marker == 0x01
-                || (marker >= 0xD0 && marker <= 0xD7))
+            if (marker is 0x00 or 0x01 or >= 0xD0 and <= 0xD7)
             {
                 continue;
             }

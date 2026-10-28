@@ -28,8 +28,7 @@ internal static class BmpPixelConverter
         }
 
         if (grayscaleOutput &&
-            info.BitCount == 8 &&
-            info.Compression == 0 &&
+            info is { BitCount: 8, Compression: 0 } &&
             HasIdentityGrayscalePalette(bmp, info))
         {
             return Direct(bmp, info, TurboJpegNativeApi.PixelFormatGray);
@@ -53,10 +52,7 @@ internal static class BmpPixelConverter
             return true;
         }
 
-        return info.Compression == 3 &&
-            info.RedMask == StandardRedMask &&
-            info.GreenMask == StandardGreenMask &&
-            info.BlueMask == StandardBlueMask;
+        return info is { Compression: 3, RedMask: StandardRedMask, GreenMask: StandardGreenMask, BlueMask: StandardBlueMask };
     }
 
     private static bool HasIdentityGrayscalePalette(ReadOnlySpan<byte> bmp, in BmpInfo info)
