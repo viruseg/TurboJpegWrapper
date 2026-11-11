@@ -1,9 +1,11 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.Versioning;
 using GdiEncoder = System.Drawing.Imaging.Encoder;
 
 namespace TurboJpegWrapper.Encoder.Benchmark;
 
+[SupportedOSPlatform("windows")]
 public static class ImgConverterGdi
 {
     private const long JpegQuality = 90L;

@@ -1,9 +1,11 @@
 ﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.Versioning;
 
 namespace TurboJpegWrapper.Decoder.Benchmark;
 
+[SupportedOSPlatform("windows")]
 public static class ImgConverterGdi
 {
     public static bool ConvertToBmp(byte[] sourceBytes, out byte[] convertedBytes)
